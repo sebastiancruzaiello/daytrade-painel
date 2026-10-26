@@ -6,7 +6,7 @@ Feito com Electron, React e componentes do [affectUI](https://github.com/flohoel
 - Só lê. Não fala com corretora, não muda regras nem limites, não tem IA nas decisões.
 - Não traz endereço nem chave de nenhum servidor: quem usa cola os dois em Ajustes, e eles ficam só no PC,
   cifrados pelo Windows.
-- Atualiza sozinho a partir dos lançamentos deste repositório (electron-updater). Cada lançamento é montado pelo
+- Atualiza sozinho a partir dos lançamentos deste repositório (electron-updater). Cada lançamento é montado e publicado pelo
   GitHub Actions (`.github/workflows/publicar.yml`) quando a versão do `package.json` muda.
 
 ## Desenvolver

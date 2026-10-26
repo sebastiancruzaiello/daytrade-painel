@@ -5,7 +5,7 @@ name: Publicar versão
 on:
   push:
     branches: [main]
-    paths: [package.json]
+    paths: [package.json, .github/workflows/publicar.yml]
   workflow_dispatch:
 
 permissions:
@@ -32,13 +32,27 @@ jobs:
         run: |
           v=$(node -p "require('./package.json').version")
           echo "v=$v" >> "$GITHUB_OUTPUT"
-          if gh release view "v$v" >/dev/null 2>&1; then echo "existe=sim" >> "$GITHUB_OUTPUT"; else echo "existe=nao" >> "$GITHUB_OUTPUT"; fi
+          if gh release view "v$v" --json assets --jq '.assets[].name' 2>/dev/null | grep -qx latest.yml; then
+            echo "existe=sim" >> "$GITHUB_OUTPUT"
+          else
+            # lançamento pela metade (sem latest.yml) não serve para atualizar: apaga e refaz
+            gh release delete "v$v" --yes --cleanup-tag 2>/dev/null || true
+            echo "existe=nao" >> "$GITHUB_OUTPUT"
+          fi
       - if: steps.versao.outputs.existe == 'nao'
         run: npm ci
       - if: steps.versao.outputs.existe == 'nao'
         run: npm test
       - if: steps.versao.outputs.existe == 'nao'
-        name: Montar e publicar
+        name: Montar o instalador
+        run: npm run dist:win
+      # Publica num passo só (instalador, blockmap e latest.yml juntos), para o programa nunca ver um lançamento pela metade.
+      - if: steps.versao.outputs.existe == 'nao'
+        name: Publicar o lançamento
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run publicar:win
+        run: |
+          v=${{ steps.versao.outputs.v }}
+          gh release create "v$v" --target "$GITHUB_SHA" --title "$v" --notes "DAYTRADE Painel $v" \
+            "release/DAYTRADE-Painel-Instalador-$v.exe" "release/DAYTRADE-Painel-Instalador-$v.exe.blockmap" release/latest.yml
