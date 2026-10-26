@@ -1,0 +1,90 @@
+{
+  "name": "daytrade-painel",
+  "productName": "DAYTRADE Painel",
+  "version": "0.1.3",
+  "description": "Painel só de leitura da equipe de robôs DAYTRADE (simulação, dinheiro de mentira)",
+  "author": "Sebastian",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --test electron/tests/fonte.test.cjs",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "publicar:win": "npm run build && electron-builder --win --x64 --publish always"
+  },
+  "dependencies": {
+    "@fontsource/chakra-petch": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "electron-updater": "^6.8.11",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  },
+  "build": {
+    "appId": "br.com.tecnolatina.daytrade.painel",
+    "productName": "DAYTRADE Painel",
+    "copyright": "Sebastian · componentes affectUI (MIT)",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "electron/main.cjs",
+      "electron/preload.cjs",
+      "electron/fonte.cjs",
+      "electron/atualizar.cjs",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DAYTRADE Painel",
+      "installerLanguages": [
+        "pt_BR"
+      ],
+      "language": "1046",
+      "artifactName": "DAYTRADE-Painel-Instalador-${version}.exe",
+      "uninstallDisplayName": "DAYTRADE Painel"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sebastiancruzaiello",
+        "repo": "daytrade-painel",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sebastiancruzaiello/daytrade-painel.git"
+  }
+}

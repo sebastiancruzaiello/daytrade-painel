@@ -1,0 +1,3 @@
+affectUI (github.com/flohoeller/affectui), MIT. Arquivos copiados sem alteração do commit: 0c81e8114c466aa6283923920eaabe62ce2a8b25 2026-10-26
+
+Traduções para português (permitidas pela licença MIT): textos visíveis de tool-call-card.tsx e o aria-label de notification-stack.tsx. Nada mais foi alterado.

@@ -1,0 +1,44 @@
+# Monta o instalador do Windows e publica como lançamento do GitHub quando a versão do package.json muda.
+# O programa instalado procura esses lançamentos e se atualiza sozinho.
+name: Publicar versão
+
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Versão já publicada?
+        id: versao
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "v=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then echo "existe=sim" >> "$GITHUB_OUTPUT"; else echo "existe=nao" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.versao.outputs.existe == 'nao'
+        run: npm ci
+      - if: steps.versao.outputs.existe == 'nao'
+        run: npm test
+      - if: steps.versao.outputs.existe == 'nao'
+        name: Montar e publicar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run publicar:win
