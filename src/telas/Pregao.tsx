@@ -8,7 +8,7 @@ import { KS, NOME, COR, REF, fmt, pct, dBR, hora, resumoConta, type Fonte } from
 import type { Base, InfoVivo } from "../App";
 import { IconePlay, IconePausa } from "./icones";
 import { Ficha } from "./Ficha";
-import type { Extras } from "../dados/mercados";
+import { segurar, pregao, type Extras, type Mercado } from "../dados/mercados";
 
 type Props = {
   fonte: Fonte; di: number; setDi: (i: number) => void;
@@ -42,8 +42,9 @@ export function Pregao(p: Props) {
   const letreiro = useMemo(() => {
     const partes = KS.map((k, ki) => ({ k, nome: NOME[k], v: d.eq[ki], r: d.eq[ki] / 10000 - 1 }));
     const emPos = d.pos.reduce((s, x, ki) => s + (ki < 2 ? (x.length ? 1 : 0) : x.length), 0);
-    return { partes, emPos };
-  }, [d]);
+    const acoes = ([["SPY", p.ex.spy], ["BOVA11", p.ex.bova]] as const).map(([t, mk]) => ({ t, s: segurar(mk, dias[0].d, d.d) }));
+    return { partes, emPos, acoes };
+  }, [d, dias, p.ex]);
 
   return (
     <div className="pregao">
@@ -68,6 +69,7 @@ export function Pregao(p: Props) {
                   <span key={x.k}><b>{x.nome}</b> {fmt(x.v)} <em className={x.r >= 0 ? "up" : "dn"}>{pct(x.r)}</em> · </span>
                 ))}
                 <span><b>BTC</b> {fmt(d.px[0])} · <b>ETH</b> {fmt(d.px[1])} · </span>
+                {letreiro.acoes.map(x => x.s && <span key={x.t}><b>{x.t}</b> {fmt(x.s.preco, 2)} · </span>)}
                 <span><b>{letreiro.emPos} de 5 robôs</b> com posição aberta · </span>
                 {d.ev && <span><b>hoje</b> {d.ev}: não abre posição · </span>}
               </span>
@@ -141,8 +143,32 @@ export function Pregao(p: Props) {
               </article>
             );
           })}
+          <CartaoAcoes titulo="Segurar SPY" mercado="EUA" cor="#e8a25b" mk={p.ex.spy} inicio={dias[0].d} dia={d.d} aoVivo={base === "aovivo"} />
+          <CartaoAcoes titulo="Segurar BOVA11" mercado="B3" cor="#5fcf8f" mk={p.ex.bova} inicio={dias[0].d} dia={d.d} aoVivo={base === "aovivo"} />
       </div>
     </div>
+  );
+}
+
+// Ações ainda não têm robô: o cartão mostra a régua (só segurar o fundo) que as estratégias do laboratório vão precisar vencer.
+function CartaoAcoes({ titulo, mercado, cor, mk, inicio, dia, aoVivo }: { titulo: string; mercado: string; cor: string; mk: Mercado; inicio: string; dia: string; aoVivo: boolean }) {
+  const s = segurar(mk, inicio, dia);
+  const pg = aoVivo ? pregao(mk) : null;
+  return (
+    <article className="cartao" style={{ ["--cor" as string]: cor }}>
+      <header>
+        <span className="cartao-nome"><i className="ponto" />{mercado} · {titulo}</span>
+        <span className="pilula regua">régua</span>
+      </header>
+      <div className="grande">
+        {s ? <><NumberTicker value={Math.round(s.valor)} locale="pt-BR" duration={300} /><small className={s.ret >= 0 ? "up" : "dn"}>{pct(s.ret)}</small></> : <small>sem dados neste dia</small>}
+      </div>
+      <dl>
+        <div><dt>preço ({mk.moeda})</dt><dd>{s ? fmt(s.preco, 2) + " em " + dBR(s.diaPreco).slice(0, 5) : "—"}</dd></div>
+        <div><dt>em 12 meses</dt><dd>{s && s.ret1a != null ? pct(s.ret1a) : "—"}</dd></div>
+        <div><dt>pregão</dt><dd>{pg ? pg.texto : s?.teveHoje ? "teve pregão" : "sem pregão neste dia"}</dd></div>
+      </dl>
+    </article>
   );
 }
 
@@ -167,8 +193,9 @@ function Legenda() {
   return (
     <ul className="legenda">
       <li><b>Sentado na mesa</b> robô com posição aberta. No café ou na sinuca, está em caixa.</li>
-      <li><b>TVs</b> preço diário da moeda; nas mesas MM20, a linha clara é a média de 20 dias.</li>
-      <li><b>Telão</b> patrimônio das três contas e, tracejado, só segurar BTC.</li>
+      <li><b>Nomes</b> ficam nos pés de cada um; a descrição aparece ao clicar.</li>
+      <li><b>TVs</b> preço diário da moeda ou do fundo; nas mesas MM20, a linha clara é a média de 20 dias.</li>
+      <li><b>Telão</b> 10.000 em cada conta: cripto em linha cheia; tracejado, só segurar BTC, SPY (EUA) e BOVA11 (B3).</li>
       <li><b>Cabine de vidro</b> o motor de risco, sem IA. Pisca em vermelho quando um freio dispara.</li>
       <li><b>Clique em alguém</b> abre a ficha: quem é, o que faz agora, saldo e últimas ordens.</li>
       <li><b>Ala de ações</b> à direita: "só segurar SPY" e "só segurar BOVA11" são réguas que não operam; o quadro mostra as fichas e vereditos do laboratório.</li>

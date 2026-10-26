@@ -7,6 +7,8 @@ import { criarCamera } from "./camera";
 
 const FONT = '"Chakra Petch", "Segoe UI", sans-serif';
 // O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22.
+const CURTO = { "mm20-btc": "MM20 BTC", "mm20-eth": "MM20 ETH", "momentum": "Momentum" };
+const AZUL = "#8fb0ff"; // títulos da ala de ações e dos grupos por mercado
 const W = 1140, H = 760, TW = 64, TH = 32, N = 12, NX = 22, OX = 420, OY = 200;
 const P = (x, y, z = 0) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2 - z];
 
@@ -76,8 +78,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     poly([P(0, 9.6), P(0, 10.9), P(0, 10.9, 96), P(0, 9.6, 96)], "#0c1114");
     poly([P(0, 9.6, 96), P(0, 10.9, 96), P(0, 10.9, 104), P(0, 9.6, 104)], C.bad);
     wallText(0, 10.8, 112, "SAÍDA", 13, C.bad);
-    backText(12.8, 148, "AÇÕES · EUA e B3", 22, C.brand);
-    backText(12.8, 131, "só olhar: aqui ninguém compra nem vende", 11, C.muted);
+    backText(13.9, 150, "AÇÕES · EUA e B3", 22, AZUL);
   }
   // Texto pintado na parede do fundo (a que corre ao longo de x).
   function backText(x, z, txt, size, color) {
@@ -98,6 +99,31 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   }
   function roundRect(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
   function tag(x, y, txt, col) { g.font = `600 12px ${FONT}`; const w = g.measureText(txt).width + 10; g.fillStyle = "rgba(10,14,16,.82)"; roundRect(x - w / 2, y - 13, w, 17, 4); g.fill(); g.fillStyle = col; g.textAlign = "center"; g.fillText(txt, x, y); g.textAlign = "left"; }
+  // Nome no pé de cada boneco: pequeno e desenhado por cima de tudo no fim do quadro, para nada tampar.
+  let nomes = [];
+  const nome = (id, sx, sy, txt, col) => nomes.push({ id, sx, sy, txt, col });
+  // Placas das áreas (ALA EUA, ALA B3, SALA DE APOIO): no chão, mas desenhadas junto com os nomes para nada cobrir.
+  const PLACAS = [[21.3, 0.55, "SALA DE APOIO", C.muted], [12.9, 5.6, "ALA EUA ↑", AZUL], [12.9, 6.4, "ALA B3 ↓", AZUL]];
+  function drawNomes() {
+    const usados = [], bate = (r) => usados.some(u => r.x < u.x + u.w && u.x < r.x + r.w && r.y < u.y + u.h && u.y < r.y + r.h);
+    g.textAlign = "center";
+    PLACAS.forEach(([x, y, txt, col]) => {
+      const [px, py] = P(x, y); g.font = `700 9.5px ${FONT}`; const w = g.measureText(txt).width + 10;
+      g.fillStyle = "rgba(10,14,16,.6)"; roundRect(px - w / 2, py - 8, w, 14, 3); g.fill();
+      g.fillStyle = col; g.fillText(txt, px, py + 2); usados.push({ x: px - w / 2, y: py - 8, w, h: 14 });
+    });
+    // Quem está mais à frente escolhe primeiro; se o nome bater em outro, desce um degrau (até dois).
+    g.font = `600 9.5px ${FONT}`;
+    [...nomes].sort((a, b) => b.sy - a.sy).forEach(n => {
+      const w = g.measureText(n.txt).width + 8, sel = n.id === selecionado;
+      let y = n.sy + 5;
+      for (let k = 0; k < 3; k++) { if (!bate({ x: n.sx - w / 2, y, w, h: 13 })) break; y += 14; }
+      usados.push({ x: n.sx - w / 2, y, w, h: 13 });
+      g.fillStyle = sel ? "rgba(107,149,255,.9)" : "rgba(10,14,16,.72)"; roundRect(n.sx - w / 2, y, w, 13, 4); g.fill();
+      g.fillStyle = sel ? "#0b0f12" : n.col; g.fillText(n.txt, n.sx, y + 10);
+    });
+    g.textAlign = "left";
+  }
   function bubble(x, y, txt, col) { g.font = `700 12px ${FONT}`; const w = g.measureText(txt).width + 14; g.fillStyle = col; roundRect(x, y - 15, w, 20, 6); g.fill(); g.beginPath(); g.moveTo(x + 6, y + 5); g.lineTo(x + 2, y + 11); g.lineTo(x + 13, y + 5); g.fill(); g.fillStyle = "#0e1316"; g.fillText(txt, x + 7, y); }
   function coinChange(coin) { const { D, dias, di } = S; const f = D.fech[coin] || [], i = dayIdx(D, dias[di].d) - 1; if (i < 1 || !f[i] || !f[i - 1]) return 0; return f[i] / f[i - 1] - 1; }
 
@@ -144,19 +170,12 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.fillStyle = "#e9c9a8"; g.beginPath(); g.arc(sx, by - 27, 8, 0, 7); g.fill();
     g.fillStyle = "#2a2320"; g.beginPath(); g.arc(sx, by - 29, 8.2, Math.PI * 1.02, Math.PI * 1.98); g.fill();
     if (sit) { g.fillStyle = "#2a2320"; g.beginPath(); g.arc(sx, by - 27, 8.2, Math.PI * 1.1, Math.PI * 1.9, true); g.fill(); }
-    const d = dias[di], ki = KS.indexOf(c.conta);
-    let txt, tc;
-    if (c.mode === "sair") { txt = "parada"; tc = C.bad; }
-    else if (c.coin && sit) { const ch = coinChange(c.coin); txt = c.coin + " " + pct(ch); tc = ch >= 0 ? C.good : C.bad; }
-    else if (d.st[ki] === "pausada") { txt = "pausa"; tc = C.warn; }
-    else { txt = "em caixa"; tc = C.muted; }
-    tag(sx, by - 44, txt, tc);
+    nome(`robo:${c.conta}:${c.i}`, sx, sy, c.conta === "momentum" ? "Momentum " + (c.i + 1) : NOME[c.conta], col);
     if (c.bubble && c.bt > 0) bubble(sx + 14, by - 60, c.bubble, c.bcol);
   }
   function drawDesk(x, y, w, label, col) {
     box(x, y, w, 0.8, 26, "#3b4850", "#2b363c", "#323e45");
     box(x, y, w, 0.08, 4, col, col, col, 26);
-    const [px, py] = P(x + 0.15, y + 0.8, 20); g.font = `700 11px ${FONT}`; g.fillStyle = col; g.fillText(label, px - 2, py + 16);
   }
   function drawTV(cx, cy, coin, col, mm, dim) {
     const { D, dias, di } = S;
@@ -173,23 +192,49 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       g.fillStyle = C.muted; g.font = `500 8px ${FONT}`; const v = f.at(-1); g.textAlign = "right"; g.fillText(v >= 100 ? fmt(v) : fmt(v, v < 1 ? 4 : 2), w - 4, 11); g.textAlign = "left";
     });
   }
+  // Telão: 10.000 em cada conta desde o começo, separado por mercado. À esquerda o gráfico, à direita os números.
   function drawTelao() {
-    const { dias, di } = S;
-    const ini = Math.max(0, di - 120), sl = dias.slice(ini, di + 1);
-    panel(3.0, 0.05, 30, 6.6, 138, (w, h) => {
+    const { dias, di, ex } = S;
+    const ini = Math.max(0, di - 120), sl = dias.slice(ini, di + 1), d0 = dias[0].d;
+    const ref = (mk) => mk ? sl.map(d => { const r = segurar(mk, d0, d.d); return r ? r.valor : null; }) : [];
+    const linhas = [
+      { grupo: "CRIPTO" },
+      ...KS.map((k, ki) => ({ nome: CURTO[k], cor: COR[k], s: sl.map(d => d.eq[ki]) })),
+      { nome: "Segurar BTC", cor: "rgba(230,236,234,.75)", s: sl.map(d => 10000 * d.px[0] / dias[0].px[0]), tracejado: true },
+      { grupo: "EUA" },
+      { nome: "Segurar SPY", cor: "#e8a25b", s: ref(ex && ex.spy), tracejado: true },
+      { grupo: "B3" },
+      { nome: "Segurar BOVA11", cor: "#5fcf8f", s: ref(ex && ex.bova), tracejado: true },
+    ];
+    panel(3.0, 0.05, 22, 8.0, 146, (w, h) => {
       g.fillStyle = "#04070a"; g.fillRect(-2, -2, w + 4, h + 4); g.fillStyle = "#0b1419"; g.fillRect(0, 0, w, h);
-      g.font = `700 11px ${FONT}`; g.fillStyle = C.accent; g.fillText("CARTEIRA", 8, 16); g.font = `500 9px ${FONT}`; g.fillStyle = C.muted; g.fillText("patrimônio das 3 contas · tracejado: só segurar BTC", 8, h - 4);
-      g.fillStyle = C.ink; g.font = `700 11px ${FONT}`; g.textAlign = "right"; g.fillText(dBR(dias[di].d), w - 8, 16); g.textAlign = "left";
-      if (sl.length < 2) return;
-      const p0 = dias[0].px[0], hold = sl.map(d => 10000 * d.px[0] / p0);
-      const series = KS.map((k, ki) => sl.map(d => d.eq[ki]));
-      const all = [...hold, ...series.flat()], lo = Math.min(...all), hi = Math.max(...all);
-      const X = i => 8 + i * (w - 48) / (sl.length - 1), Y = v => h - 18 - (v - lo) / ((hi - lo) || 1) * (h - 44);
-      g.strokeStyle = "rgba(255,255,255,.06)"; g.lineWidth = .5; for (let q = 0; q < 4; q++) { const yy = 26 + q * (h - 36) / 3; g.beginPath(); g.moveTo(8, yy); g.lineTo(w - 40, yy); g.stroke(); }
-      g.setLineDash([2, 2]); g.strokeStyle = "rgba(230,236,234,.5)"; g.lineWidth = .8; g.beginPath(); hold.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); g.stroke(); g.setLineDash([]);
-      series.forEach((s, ki) => {
-        g.strokeStyle = COR[KS[ki]]; g.lineWidth = 1.8; g.beginPath(); s.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); g.stroke();
-        g.fillStyle = COR[KS[ki]]; g.font = `700 9px ${FONT}`; g.fillText(fmt(s.at(-1) / 1000, 1) + "k", w - 37, Y(s.at(-1)) + 3);
+      g.font = `700 11px ${FONT}`; g.fillStyle = C.accent; g.fillText("CARTEIRA", 8, 15);
+      g.font = `500 8px ${FONT}`; g.fillStyle = C.muted; g.fillText("10.000 em cada uma desde " + dBR(d0), 64, 15);
+      g.fillStyle = C.ink; g.font = `700 10px ${FONT}`; g.textAlign = "right"; g.fillText(dBR(dias[di].d), w - 8, 15); g.textAlign = "left";
+      const gw = w * 0.42, top = 26, bot = h - 8;
+      const series = linhas.filter(l => l.s && l.s.length > 1);
+      const todos = series.flatMap(l => l.s.filter(v => v != null));
+      if (sl.length > 1 && todos.length) {
+        const lo = Math.min(...todos, 10000), hi = Math.max(...todos, 10000);
+        const X = i => 8 + i * (gw - 12) / (sl.length - 1), Y = v => bot - (v - lo) / ((hi - lo) || 1) * (bot - top);
+        g.strokeStyle = "rgba(255,255,255,.08)"; g.lineWidth = .6; g.setLineDash([1, 3]); g.beginPath(); g.moveTo(8, Y(10000)); g.lineTo(gw - 4, Y(10000)); g.stroke(); g.setLineDash([]);
+        series.forEach(l => {
+          g.strokeStyle = l.cor; g.lineWidth = l.tracejado ? 1 : 1.8; g.setLineDash(l.tracejado ? [3, 2] : []);
+          g.beginPath(); let up = false; l.s.forEach((v, i) => { if (v == null) { up = false; return; } up ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)); up = true; }); g.stroke();
+        });
+        g.setLineDash([]);
+      }
+      // Tabela por mercado.
+      let yy = 30; const x0 = gw + 6, xr = w - 8;
+      linhas.forEach(l => {
+        if (l.grupo) { g.font = `700 8.5px ${FONT}`; g.fillStyle = AZUL; g.fillText(l.grupo, x0, yy); yy += 11; return; }
+        const v = l.s && l.s.length ? l.s[l.s.length - 1] : null;
+        g.fillStyle = l.cor; g.fillRect(x0, yy - 6, 7, l.tracejado ? 2 : 4);
+        g.font = `500 9px ${FONT}`; g.fillStyle = C.ink; g.fillText(l.nome, x0 + 11, yy);
+        g.textAlign = "right";
+        if (v == null) { g.fillStyle = C.muted; g.fillText("—", xr, yy); }
+        else { const r = v / 10000 - 1; g.fillStyle = r >= 0 ? C.good : C.bad; g.fillText(pct(r), xr, yy); g.fillStyle = C.ink; g.fillText(fmt(v), xr - 40, yy); }
+        g.textAlign = "left"; yy += 12.5;
       });
     });
   }
@@ -205,15 +250,16 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.fillStyle = fl ? C.bad : "#5d7f8c"; roundRect(sx - 9, sy - 36, 18, 22, 6); g.fill();
     g.fillStyle = "#e9c9a8"; g.beginPath(); g.arc(sx, sy - 43, 8, 0, 7); g.fill();
     g.fillStyle = "#1d2a30"; g.fillRect(sx - 9, sy - 52, 18, 6);
-    tag(sx, sy - 60, fl ? "FREIO!" : "motor de risco", fl ? C.bad : "#9fc3cf");
-    const [lx, ly] = P(9.25, 3.6, 78); g.font = `700 11px ${FONT}`; g.fillStyle = "#9fc3cf"; g.fillText("MOTOR DE RISCO · sem IA", lx - 6, ly);
+    if (fl) tag(sx, sy - 60, "FREIO!", C.bad);
+    nome("staff:guardiao", sx, sy, "Guardião", "#9fc3cf");
+    const [lx, ly] = P(9.25, 3.6, 78); g.font = `700 9px ${FONT}`; g.fillStyle = "#9fc3cf"; g.fillText("MOTOR DE RISCO", lx - 4, ly);
   }
   function drawLounge() {
     box(0.6, 10.9, 2.6, 0.7, 16, "#5b3f52", "#47313f", "#503848"); box(0.6, 11.4, 2.6, 0.2, 30, "#5b3f52", "#47313f", "#503848");
     box(2.0, 8.6, 1.8, 1.0, 22, "#1f6b4d", "#3a2a20", "#47342a");
     box(0.3, 7.9, 0.6, 0.6, 40, "#6b737a", "#454c52", "#545b61");
-    const [cx, cy] = P(0.6, 8.2, 46); tag(cx, cy - 4, "café", C.muted);
-    const [sx, sy] = P(2.9, 9.1, 30); tag(sx, sy - 6, "sinuca", C.muted);
+    const [cx, cy] = P(0.6, 8.2, 46); g.font = `600 9px ${FONT}`; g.fillStyle = C.muted; g.textAlign = "center"; g.fillText("café", cx, cy - 4);
+    const [sx, sy] = P(2.9, 9.1, 30); g.fillText("sinuca", sx, sy - 6); g.textAlign = "left";
   }
   function drawShelf() {
     box(0.15, 2.2, 0.5, 1.8, 90, "#4a3a2c", "#3a2e23", "#44362a");
@@ -226,7 +272,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       g.fillStyle = s.cor; roundRect(sx - 9, sy - 36, 18, 22, 6); g.fill();
       g.fillStyle = "#e9c9a8"; g.beginPath(); g.arc(sx, sy - 43, 8, 0, 7); g.fill();
       g.fillStyle = "#3a2c22"; g.beginPath(); g.arc(sx, sy - 45, 8.2, Math.PI, 0); g.fill();
-      tag(sx, sy - 58, s.nome + " · " + s.label, s.anda ? C.staff : s.cor);
+      nome(s.id, sx, sy, s.nome, s.anda ? C.staff : s.cor);
     });
   }
 
@@ -261,43 +307,56 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     box(11.85, 7.6, 0.3, 4.4, 46, "#2c3940", "#202a30", "#26323a");
   }
   function diaMostrado() { return S.dias[S.di].d; }
-  // Com o salão inteiro na tela, a ala mostra só os nomes; de perto, mostra o que cada um está fazendo.
-  const perto = () => camera.zoom() > 1.5;
   function drawFundoTV(cx, cy, mk, cor) {
-    const [bx, by] = P(cx + 1.1, cy, 26); g.fillStyle = "#4a565d"; g.fillRect(bx - 1.5, by - 50, 3, 50);
-    panel(cx, cy, 76, 2.3, 58, (w, h) => {
+    const [bx, by] = P(cx + 1.3, cy, 26); g.fillStyle = "#4a565d"; g.fillRect(bx - 1.5, by - 54, 3, 54);
+    panel(cx, cy, 80, 2.7, 64, (w, h) => {
       g.fillStyle = "#05080a"; g.fillRect(-3, -3, w + 6, h + 6); g.fillStyle = "#0d171b"; g.fillRect(0, 0, w, h);
       if (!mk) { g.font = `600 9px ${FONT}`; g.fillStyle = "#3c4a50"; g.fillText("sem dados", 6, h / 2); return; }
-      const i = idxAte(mk, diaMostrado());
+      const dia = diaMostrado(), i = idxAte(mk, dia);
       if (i < 1) { g.font = `600 9px ${FONT}`; g.fillStyle = "#3c4a50"; g.fillText("antes do começo dos dados", 6, h / 2); return; }
-      const f = mk.c.slice(Math.max(0, i - 59), i + 1);
-      g.save(); g.translate(4, 15); spark(f, w - 10, h - 16, cor, null); g.restore();
       g.font = `700 10px ${FONT}`; g.fillStyle = C.ink; g.fillText(mk.t.replace(".SA", ""), 5, 11);
-      g.font = `500 9px ${FONT}`; g.fillStyle = C.muted; g.textAlign = "right"; g.fillText((mk.moeda === "BRL" ? "R$ " : "US$ ") + fmt(mk.c[i], 2) + " · " + dBR(mk.d[i]).slice(0, 5), w - 5, 11); g.textAlign = "left";
+      g.textAlign = "right"; g.fillText((mk.moeda === "BRL" ? "R$ " : "US$ ") + fmt(mk.c[i], 2), w - 5, 11); g.textAlign = "left";
+      // Segunda linha: pregão agora (ao vivo) ou se houve pregão no dia mostrado (ensaio).
+      let txt, cl;
+      if (S.aoVivo && S.ex.aoVivo) { const pg = pregao(mk); txt = pg.aberto ? "pregão aberto" : "pregão fechado"; cl = pg.aberto ? C.good : C.muted; }
+      else { const teve = mk.d[i] === dia; txt = teve ? "pregão em " + dBR(dia).slice(0, 5) : "sem pregão em " + dBR(dia).slice(0, 5); cl = teve ? C.good : C.muted; }
+      g.font = `600 8px ${FONT}`; g.fillStyle = cl; g.fillText(txt, 5, 22);
+      const f = mk.c.slice(Math.max(0, i - 59), i + 1);
+      g.save(); g.translate(4, 26); spark(f, w - 10, h - 28, cor, null); g.restore();
     });
   }
-  function drawLabMonitor(cx, cy, lab) {
-    panel(cx, cy, 30, 1.6, 34, (w, h) => {
+  function drawLabMonitor(cx, cy, lab, titulo) {
+    panel(cx, cy, 30, 1.6, 30, (w, h) => {
       g.fillStyle = "#05080a"; g.fillRect(-2, -2, w + 4, h + 4); g.fillStyle = "#101a1f"; g.fillRect(0, 0, w, h);
-      g.font = `700 8px ${FONT}`; g.fillStyle = C.ink; g.fillText(lab.fichas ? lab.fichas + " ficha" + (lab.fichas > 1 ? "s" : "") : "nenhuma ficha", 4, 11);
-      g.font = `500 7px ${FONT}`; g.fillStyle = C.muted; g.fillText(lab.linhas[0] ? lab.linhas[0].v.slice(0, 30) : "esperando a fila", 4, 24);
+      g.textAlign = "center";
+      g.font = `700 8.5px ${FONT}`; g.fillStyle = C.accent; g.fillText(titulo, w / 2, 12);
+      g.font = `600 8px ${FONT}`; g.fillStyle = lab.fichas ? C.ink : C.muted;
+      g.fillText(lab.fichas ? lab.fichas + " ficha" + (lab.fichas > 1 ? "s" : "") : "sem fichas", w / 2, 24); g.textAlign = "left";
     });
   }
   function drawQuadroLab() {
     const ex = S.ex; if (!ex) return;
-    panel(12.8, 0.05, 16, 8.6, 104, (w, h) => {
+    panel(13.9, 0.05, 40, 8.0, 100, (w, h) => {
       g.fillStyle = "#04070a"; g.fillRect(-2, -2, w + 4, h + 4); g.fillStyle = "#0e1418"; g.fillRect(0, 0, w, h);
-      g.font = `700 11px ${FONT}`; g.fillStyle = C.accent; g.fillText("QUADRO DO LABORATÓRIO · fichas e vereditos", 8, 15);
-      g.font = `500 8px ${FONT}`; g.fillStyle = C.muted; g.textAlign = "right"; g.fillText("atualizado " + dBR(ex.lab.em), w - 8, 15); g.textAlign = "left";
+      g.font = `700 11px ${FONT}`; g.fillStyle = C.accent; g.fillText("LABORATÓRIO · fichas e vereditos", 8, 15);
+      g.font = `500 8px ${FONT}`; g.fillStyle = C.muted; g.textAlign = "right"; g.fillText(dBR(ex.lab.em), w - 8, 15); g.textAlign = "left";
       const cols = [["CRIPTO", ex.lab.cripto], ["EUA", ex.lab.eua], ["B3", ex.lab.b3]], cw = (w - 16) / 3;
-      cols.forEach(([nome, m], k) => {
-        const x0 = 8 + k * cw;
+      cols.forEach(([nm, m], k) => {
+        const x0 = 8 + k * cw, larg = cw - 16;
+        g.save(); g.beginPath(); g.rect(x0, 22, cw - 6, h - 28); g.clip();
         g.fillStyle = "rgba(255,255,255,.04)"; g.fillRect(x0, 22, cw - 6, h - 28);
-        g.font = `700 9px ${FONT}`; g.fillStyle = C.brand; g.fillText(nome + " · " + (m.fichas || 0) + " ficha" + (m.fichas === 1 ? "" : "s"), x0 + 5, 34);
-        g.font = `500 7.5px ${FONT}`;
-        if (!m.linhas.length) { g.fillStyle = C.muted; quebra(m.nota || "nada ainda", x0 + 5, 47, cw - 16, 10, 5); return; }
-        let yy = 47;
-        m.linhas.slice(0, 3).forEach(l => { g.fillStyle = C.ink; g.fillText(l.t.slice(0, 34), x0 + 5, yy); g.fillStyle = /descart|reprov/i.test(l.v) ? C.bad : /aprov|passou/i.test(l.v) ? C.good : C.warn; yy = quebra(l.v, x0 + 5, yy + 10, cw - 16, 9, 2) + 4; });
+        g.font = `700 9px ${FONT}`; g.fillStyle = AZUL; g.fillText(nm, x0 + 5, 34);
+        g.font = `500 8px ${FONT}`; g.fillStyle = C.muted; g.textAlign = "right"; g.fillText((m.fichas || 0) + " ficha" + (m.fichas === 1 ? "" : "s"), x0 + cw - 11, 34); g.textAlign = "left";
+        if (!m.linhas.length) { g.font = `500 8px ${FONT}`; g.fillStyle = C.muted; quebra(m.nota || "nada ainda", x0 + 5, 48, larg, 10, 4); g.restore(); return; }
+        // Uma linha por veredito: a palavra principal colorida e o nome curto da estratégia.
+        let yy = 48;
+        m.linhas.slice(0, 3).forEach(l => {
+          const palavra = (String(l.v).split(/[:\s]/)[0] || "").toUpperCase();
+          const cl = /descart|reprov/i.test(l.v) ? C.bad : /aprov|passou/i.test(l.v) ? C.good : C.warn;
+          g.font = `700 8px ${FONT}`; g.fillStyle = cl; g.fillText(palavra, x0 + 5, yy);
+          g.font = `500 8px ${FONT}`; g.fillStyle = C.ink; yy = quebra(String(l.t).replace(/^ficha:\s*/i, ""), x0 + 5, yy + 10, larg, 9.5, 2) + 5;
+        });
+        g.restore();
       });
     });
   }
@@ -314,41 +373,28 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       const mk = ex[a.chave];
       objs.push({ k: 13 + a.y + 0.2, f: () => drawFundoTV(13.15, a.y - 0.1, mk, a.cor) });
       objs.push({ k: 13 + a.y + 0.5, f: () => drawDesk(13.0, a.y, 3.0, a.rotulo, a.cor) });
-      objs.push({ k: 16.6 + a.y + 0.5, f: () => { drawDesk(16.6, a.y, 2.7, a.lab, C.accent); drawLabMonitor(17.1, a.y - 0.05, ex.lab[a.labChave]); } });
-      // Placa do pregão: no ao vivo, aberto/fechado agora; no ensaio, se houve pregão no dia mostrado.
-      objs.push({ k: 30, f: () => {
-        const [px, py] = P(14.2, a.y + 3.0, 0);
-        if (!mk) return;
-        if (S.aoVivo && ex.aoVivo) { const pg = pregao(mk); tag(px, py, (n ? "B3 · " : "NOVA YORK · ") + pg.texto, pg.aberto ? C.good : C.muted); }
-        else { const sg = segurar(mk, inicio, dia); tag(px, py, (n ? "B3 · " : "NOVA YORK · ") + (sg && sg.teveHoje ? "teve pregão neste dia" : "sem pregão neste dia"), sg && sg.teveHoje ? C.good : C.muted); }
-      } });
+      objs.push({ k: 16.6 + a.y + 0.5, f: () => { drawDesk(16.6, a.y, 2.7, a.lab, C.accent); drawLabMonitor(17.1, a.y - 0.05, ex.lab[a.labChave], a.lab.replace("LABORATÓRIO", "LAB")); } });
+
       // Robô de referência: sempre sentado, porque só segura o fundo.
       objs.push({ k: 15.4 + a.y + 1.5 + 0.3, f: () => {
         const [sx, sy] = P(15.4, a.y + 1.5); anel(a.id, sx, sy);
-        const by = figura(sx, sy, a.cor, { sentado: true, t, fase: n });
-        const sg = mk && segurar(mk, inicio, dia);
-        tag(sx, by - 44, sg ? a.nome + " " + pct(sg.ret) : a.nome + " · sem dados", sg ? (sg.ret >= 0 ? C.good : C.bad) : C.muted);
+        figura(sx, sy, a.cor, { sentado: true, t, fase: n });
+        nome(a.id, sx, sy, "Segurar " + a.nome, a.cor);
       } });
       objs.push({ k: 18.6 + a.y + 1.5 + 0.3, f: () => {
         const ag = a.agente, [sx, sy] = P(18.6, a.y + 1.5); anel(ag.id, sx, sy);
-        const by = figura(sx, sy, ag.cor, { sentado: true, t, fase: n + 2 });
-        tag(sx, by - 44, perto() ? ag.nome + " · " + ag.label : ag.nome, ag.cor);
+        figura(sx, sy, ag.cor, { sentado: true, t, fase: n + 2 });
+        nome(ag.id, sx, sy, ag.nome, ag.cor);
       } });
     });
     objs.push({ k: 20.3 + 1, f: () => box(20.05, 0.9, 0.4, 10.4, 24, "#33404a", "#252f36", "#2c373f") });
     APOIO.forEach((p, n) => objs.push({ k: p.x + p.y + 0.3, f: () => {
       const [sx, sy] = P(p.x, p.y); anel(p.id, sx, sy);
-      const by = figura(sx, sy, p.cor, { apagado: p.fase2, t, fase: n });
-      let txt = p.fase2 ? "fase 2 · ainda não começou" : "", cor = p.fase2 ? C.muted : p.cor;
-      if (p.id === "robo:guardiao-dados") { const gd = ex.guardiao; txt = gd ? (gd.nivel === "ok" ? "dados ok" : gd.nivel === "falha" ? "achou falha!" : "alerta") : "sem leitura"; cor = gd && gd.nivel !== "ok" ? (gd.nivel === "falha" ? C.bad : C.warn) : cor; }
-      if (p.id === "robo:coletor-clima") { const cl = ex.clima; txt = cl && cl.medo_ganancia ? "medo/ganância " + cl.medo_ganancia.valor : "sem leitura"; }
-      if (p.id === "robo:coletor-mercados") txt = "Yahoo de hora em hora";
-      if (p.id === "agente:sentinela") txt = "notícias · só avisa";
-      if (p.id === "robo:organizador") txt = "quadro diário";
-      tag(sx, by - (n % 2 ? 60 : 44), perto() ? p.nome + " · " + txt : p.nome, cor);
+      figura(sx, sy, p.cor, { t, fase: n });
+      const gd = ex.guardiao, alerta = p.id === "robo:guardiao-dados" && gd && gd.nivel !== "ok";
+      if (alerta) tag(sx, sy - 58, "!", gd.nivel === "falha" ? C.bad : C.warn);
+      nome(p.id, sx, sy, p.nome, p.cor);
     } }));
-    const [lx, ly] = P(21.2, 0.4, 0); tag(lx, ly - 2, "SALA DE APOIO", C.muted);
-    objs.push({ k: 40, f: () => { const [x1, y1] = P(12.6, 5.6, 0); tag(x1, y1, "ALA EUA", C.brand); const [x2, y2] = P(12.6, 11.5, 0); tag(x2, y2, "ALA B3", C.brand); } });
   }
 
   function frame(t) {
@@ -365,6 +411,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#0b0f12"; g.fillRect(0, 0, cv.width, cv.height);
     camera.aplicar(g, DPR(), dt);
     floor(); walls(); drawTelao(); drawShelf(); drawQuadroLab();
+    nomes = [];
     const d = S.dias[S.di];
     const objs = [];
     objs.push({ k: 6.9, f: () => drawDesk(2.2, 4.2, 3.2, "MESA MM20", C.accent) });
@@ -378,6 +425,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     alaAcoes(objs, t);
     chars.forEach(c => objs.push({ k: c.x + c.y + 0.3, f: () => drawChar(c, t) }));
     objs.sort((a, b) => a.k - b.k).forEach(o => o.f());
+    drawNomes();
     KS.forEach((k, ki) => {
       if (d.st[ki] === "parada" || S.pararTeste) {
         const pos = k === "momentum" ? P(8.2, 7.4, 60) : P(k === "mm20-btc" ? 3.0 : 4.6, 4.9, 60);

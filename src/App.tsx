@@ -131,7 +131,7 @@ export function App() {
             info={info} vivo={vivo} ex={ex}
           />
         )}
-        {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} />}
+        {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} />}
         {aba === "diario" && <Diario dias={dias} di={diSeguro} />}
         {aba === "ajustes" && <Ajustes info={info} onSalvo={lerVivo} atualizacao={atualizacao} />}
       </main>

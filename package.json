@@ -1,7 +1,7 @@
 {
   "name": "daytrade-painel",
   "productName": "DAYTRADE Painel",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Painel só de leitura da equipe de robôs DAYTRADE (simulação, dinheiro de mentira)",
   "author": "Sebastian",
   "license": "UNLICENSED",
