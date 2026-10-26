@@ -8,12 +8,13 @@ import { KS, NOME, COR, REF, fmt, pct, dBR, hora, resumoConta, type Fonte } from
 import type { Base, InfoVivo } from "../App";
 import { IconePlay, IconePausa } from "./icones";
 import { Ficha } from "./Ficha";
+import type { Extras } from "../dados/mercados";
 
 type Props = {
   fonte: Fonte; di: number; setDi: (i: number) => void;
   tocando: boolean; setTocando: (b: boolean) => void; passo: string; setPasso: (s: string) => void;
   base: Base; setBase: (b: Base) => void; temVivo: boolean; pararTeste: boolean;
-  info: InfoVivo; vivo: Fonte | null;
+  info: InfoVivo; vivo: Fonte | null; ex: Extras;
 };
 
 export function Pregao(p: Props) {
@@ -23,6 +24,10 @@ export function Pregao(p: Props) {
   const cena = useRef<Cena | null>(null);
   const [zoom, setZoom] = useState(1);
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [lateral, setLateral] = useState(() => { try { return localStorage.getItem("lateral") !== "fechada"; } catch { return true; } });
+  const mudaLateral = (v: boolean) => { setLateral(v); try { localStorage.setItem("lateral", v ? "aberta" : "fechada"); } catch { /* sem memória do navegador, tudo bem */ } };
+  // Clicar em alguém abre a coluna para mostrar a ficha.
+  useEffect(() => { if (selecionado) setLateral(true); }, [selecionado]);
   const fecharFicha = () => { setSelecionado(null); cena.current?.selecionar(null); };
 
   useEffect(() => {
@@ -30,8 +35,8 @@ export function Pregao(p: Props) {
     return () => cena.current?.destruir();
   }, []);
   useEffect(() => {
-    cena.current?.mostrar({ D: fonte, dias, di, pararTeste, vivo: p.vivo, aoVivo: base === "aovivo" });
-  }, [fonte, dias, di, pararTeste, p.vivo, base]);
+    cena.current?.mostrar({ D: fonte, dias, di, pararTeste, vivo: p.vivo, aoVivo: base === "aovivo", ex: p.ex });
+  }, [fonte, dias, di, pararTeste, p.vivo, base, p.ex]);
 
   const fim = di >= dias.length - 1;
   const letreiro = useMemo(() => {
@@ -42,10 +47,11 @@ export function Pregao(p: Props) {
 
   return (
     <div className="pregao">
-      <div className="pregao-cima">
+      <div className={"pregao-cima" + (lateral ? "" : " sem-lateral")}>
       <section className="palco" aria-label="Salão de trading animado">
         <div className="palco-rola">
-          <canvas ref={cv} width={1000} height={640} aria-label="Salão de trading animado com as contas da simulação. Role o mouse para aproximar, arraste para mover, clique numa mesa para chegar perto." />
+          <canvas ref={cv} aria-label="Escritório animado: salão de cripto e ala de ações (EUA e B3). Role o mouse para aproximar, arraste para mover, clique numa pessoa para ver a ficha." />
+          <button type="button" className="lateral-botao" onClick={() => mudaLateral(!lateral)} aria-expanded={lateral} title={lateral ? "Esconder a coluna e aumentar o escritório" : "Mostrar avisos e fichas"}>{lateral ? "Esconder coluna ›" : "‹ Avisos e fichas"}</button>
           <div className="zoom" role="group" aria-label="Zoom do salão">
             <button type="button" onClick={() => cena.current?.mais()} aria-label="Aproximar" title="Aproximar">+</button>
             <span aria-live="polite">{Math.round(zoom * 100)}%</span>
@@ -69,9 +75,9 @@ export function Pregao(p: Props) {
           </div>
         </div>
       </section>
-        <aside className="avisos">
+        <aside className="avisos" hidden={!lateral}>
           {selecionado
-            ? <Ficha id={selecionado} fonte={fonte} di={di} pararTeste={pararTeste} aoVivo={base === "aovivo"} fechar={fecharFicha} />
+            ? <Ficha id={selecionado} fonte={fonte} di={di} pararTeste={pararTeste} aoVivo={base === "aovivo"} ex={p.ex} fechar={fecharFicha} />
             : <>
                 <h2>Avisos</h2>
                 <Avisos {...p} />
@@ -165,6 +171,7 @@ function Legenda() {
       <li><b>Telão</b> patrimônio das três contas e, tracejado, só segurar BTC.</li>
       <li><b>Cabine de vidro</b> o motor de risco, sem IA. Pisca em vermelho quando um freio dispara.</li>
       <li><b>Clique em alguém</b> abre a ficha: quem é, o que faz agora, saldo e últimas ordens.</li>
+      <li><b>Ala de ações</b> à direita: "só segurar SPY" e "só segurar BOVA11" são réguas que não operam; o quadro mostra as fichas e vereditos do laboratório.</li>
       <li><b>Porta</b> conta parada: os robôs saem e só voltam com ordem do Sebastian.</li>
     </ul>
   );

@@ -3,6 +3,7 @@ import { SegmentedControl } from "./ui/affectui/segmented-control";
 import { GridBackground } from "./ui/affectui/grid-background";
 import { Button } from "./ui/affectui/button";
 import { deLinhas, fonteEnsaio, dBR, hora, type Fonte } from "./dados/formato";
+import { extrasDeLinhas, extrasEmbutidos, type Extras } from "./dados/mercados";
 import { Pregao } from "./telas/Pregao";
 import { Contas } from "./telas/Contas";
 import { Diario } from "./telas/Diario";
@@ -31,6 +32,7 @@ export function App() {
   const [pararTeste, setPararTeste] = useState(false);
   const [dialogo, setDialogo] = useState(false);
   const jaTeveVivo = useRef(false);
+  const [ex, setEx] = useState<Extras>(extrasEmbutidos);
   const atualizacao = useAtualizacao();
 
   const fonte: Fonte = useMemo(() => (base === "aovivo" && vivo ? vivo : fonteEnsaio(base === "longo" ? "longo" : "recente")), [base, vivo]);
@@ -46,6 +48,8 @@ export function App() {
       setInfo(r.erro === "sem-endereco" ? { estado: "sem-endereco" } : { estado: "erro", msg: r.erro });
       return;
     }
+    const e = extrasDeLinhas(r.linhas);
+    if (e) setEx(e);
     const v = deLinhas(r.linhas);
     // Tabela ainda vazia: a VPS não mandou o primeiro resumo.
     if (!v) { setInfo({ estado: "erro", msg: "o n8n respondeu, mas ainda não chegou nenhum resumo da VPS" }); return; }
@@ -118,13 +122,13 @@ export function App() {
       </GridBackground>
       <FaixaAtualizacao estado={atualizacao} />
 
-      <main id="tela" role="tabpanel" className="tela">
+      <main id="tela" role="tabpanel" className={"tela" + (aba === "pregao" ? " tela-larga" : "")}>
         {aba === "pregao" && (
           <Pregao
             fonte={fonte} di={diSeguro} setDi={i => { setTocando(false); setDi(i); }}
             tocando={tocando} setTocando={setTocando} passo={passo} setPasso={setPasso}
             base={base} setBase={setBase} temVivo={!!vivo} pararTeste={pararTeste}
-            info={info} vivo={vivo}
+            info={info} vivo={vivo} ex={ex}
           />
         )}
         {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} />}

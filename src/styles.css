@@ -69,7 +69,8 @@ h1 span { color: var(--muted); font-weight: 500; }
 .pregao { display: flex; flex-direction: column; gap: 14px; }
 .palco { border-radius: var(--radius); overflow: hidden; background: #0b0f12; border: 1px solid var(--line); box-shadow: 0 20px 60px -30px rgba(0, 0, 0, .8); }
 .palco-rola { position: relative; display: flex; justify-content: center; }
-.palco canvas { display: block; width: min(100%, max(594px, calc((100vh - 400px) * 1.5625))); height: auto; aspect-ratio: 1000 / 640; user-select: none; }
+/* o escritório ocupa a altura da janela; a cena se encaixa no canvas, que tem o tamanho que sobrar */
+.palco canvas { display: block; width: 100%; height: max(440px, calc(100vh - 262px)); user-select: none; }
 .zoom { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 2px; padding: 4px; background: rgba(22, 22, 24, .86); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(6px); font-variant-numeric: tabular-nums; }
 .zoom button { min-width: 34px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font-size: 18px; line-height: 1; cursor: pointer; transition: background .2s var(--ease); }
 .zoom button:hover:not(:disabled) { background: var(--card-2); }
@@ -87,7 +88,14 @@ h1 span { color: var(--muted); font-weight: 500; }
 .linha-tempo .data { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 6.5em; }
 .linha-tempo input { flex: 1; min-width: 0; accent-color: var(--accent); }
 .aviso-teste { margin: 0; padding: 10px 14px; border-radius: 10px; background: rgba(242, 119, 123, .1); color: #ffd9d6; border: 1px solid rgba(242, 119, 123, .3); }
-.pregao-cima { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
+.pregao-cima { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+.pregao-cima.sem-lateral { grid-template-columns: minmax(0, 1fr); }
+.avisos[hidden] { display: none; }
+.pregao-cima .avisos { max-height: max(476px, calc(100vh - 226px)); overflow-y: auto; }
+.tela-larga { max-width: none; padding: 14px 18px 24px; }
+.lateral-botao { position: absolute; top: 12px; left: 12px; z-index: 2; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--line); background: rgba(14, 19, 22, .85); color: var(--ink); font: 500 12.5px var(--sans); cursor: pointer; }
+.lateral-botao:hover { background: var(--card-2); }
+.lateral-botao:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 1150px) { .pregao-cima { grid-template-columns: minmax(0, 1fr); } }
 .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .cartao { background: var(--tray); border-radius: var(--radius); padding: 6px; display: flex; flex-direction: column; }
@@ -161,7 +169,7 @@ h1 span { color: var(--muted); font-weight: 500; }
 }
 
 /* ficha de quem foi clicado no salão */
-.ficha { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 18px; background: var(--tray); border: 1px solid var(--line); border-radius: var(--radius); font-size: 13.5px; line-height: 1.5; max-height: calc(100vh - 360px); min-height: 320px; overflow-y: auto; animation: ficha-entra .28s var(--ease); }
+.ficha { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 18px; background: var(--tray); border: 1px solid var(--line); border-radius: var(--radius); font-size: 13.5px; line-height: 1.5; min-height: 320px; animation: ficha-entra .28s var(--ease); }
 @keyframes ficha-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .ficha p { margin: 0; }
 .ficha h3 { margin: 6px 0 0; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }

@@ -16,10 +16,16 @@ export function criarCamera(cv, W, H, alvos, aoMudar, aoTocar) {
     tcx = Math.min(W - mw, Math.max(mw, tcx));
     tcy = Math.min(H - mh, Math.max(mh, tcy));
   };
+  // O canvas pode ter qualquer tamanho: a cena (W x H) cabe inteira nele, centralizada (escala "base").
+  const base = () => {
+    const r = cv.getBoundingClientRect();
+    const s = Math.min(r.width / W, r.height / H) || 1;
+    return { r, s, ox: (r.width - W * s) / 2, oy: (r.height - H * s) / 2 };
+  };
   // ponto da tela (evento) -> coordenada da cena
   const naCena = (ev) => {
-    const r = cv.getBoundingClientRect();
-    const sx = (ev.clientX - r.left) / r.width * W, sy = (ev.clientY - r.top) / r.height * H;
+    const { r, s, ox, oy } = base();
+    const sx = (ev.clientX - r.left - ox) / s, sy = (ev.clientY - r.top - oy) / s;
     return { sx, sy, x: cx + (sx - W / 2) / z, y: cy + (sy - H / 2) / z };
   };
   // zoom mantendo fixo o ponto (sx, sy) da tela
@@ -46,7 +52,7 @@ export function criarCamera(cv, W, H, alvos, aoMudar, aoTocar) {
       return;
     }
     toques.set(ev.pointerId, ev);
-    const r = cv.getBoundingClientRect(), k = W / r.width;
+    const k = 1 / base().s;
     if (pinca && toques.size === 2) {
       const [a, b] = [...toques.values()];
       const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
@@ -91,11 +97,12 @@ export function criarCamera(cv, W, H, alvos, aoMudar, aoTocar) {
   cv.addEventListener("dblclick", duplo);
 
   return {
-    // chamada a cada quadro: anima a câmera e aplica a transformação (r = pixels por unidade da cena)
-    aplicar(g, r, dt) {
+    // chamada a cada quadro: anima a câmera e aplica a transformação (dpr = pixels do canvas por pixel da tela)
+    aplicar(g, dpr, dt) {
       const a = 1 - Math.pow(0.001, (dt || 16) / 1000 * 3);
       z += (tz - z) * a; cx += (tcx - cx) * a; cy += (tcy - cy) * a;
-      g.setTransform(r * z, 0, 0, r * z, r * (W / 2 - cx * z), r * (H / 2 - cy * z));
+      const { s, ox, oy } = base(), e = dpr * s * z;
+      g.setTransform(e, 0, 0, e, dpr * (ox + s * (W / 2 - cx * z)), dpr * (oy + s * (H / 2 - cy * z)));
     },
     mais() { zoomEm(1.4); },
     menos() { zoomEm(1 / 1.4); },
