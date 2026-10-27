@@ -1,0 +1,25 @@
+# Confere cada PR (e cada push na main) antes do merge: testes de leitura e montagem da tela.
+# Não publica nada; quem publica é o publicar.yml, só quando a versão muda.
+name: testes
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Montar a tela (confere os tipos)
+        run: npm run build
