@@ -7,6 +7,8 @@ import { extrasDeLinhas, extrasEmbutidos, pregao, type Extras } from "./dados/me
 import { vizinhasDeLinhas, type Vizinhas } from "./dados/vizinhas";
 import { Pregao } from "./telas/Pregao";
 import { Robos } from "./telas/Robos";
+import { Fabrica } from "./telas/Fabrica";
+import { fabricaDeLinhas, fabricaDoLab, type Fabrica as QuadroFabrica } from "./dados/fabrica";
 import { montarEntidades, type Conexao } from "./dados/estados";
 import { Contas } from "./telas/Contas";
 import { Diario } from "./telas/Diario";
@@ -20,7 +22,7 @@ export type InfoVivo =
   | { estado: "sem-programa" | "sem-endereco" | "lendo" }
   | { estado: "ok"; lidoEm: string; geradoEm: string; diasVivo: number }
   | { estado: "erro"; msg: string };
-type Aba = "pregao" | "robos" | "contas" | "diario" | "ajustes";
+type Aba = "pregao" | "robos" | "fabrica" | "contas" | "diario" | "ajustes";
 
 const DEZ_MIN = 10 * 60 * 1000;
 
@@ -40,6 +42,7 @@ export function App() {
   const atualizacao = useAtualizacao();
   // Última leitura boa: numa falha, o salão continua mostrando o que chegou e diz desde quando.
   const [ultimaOk, setUltimaOk] = useState<string | null>(null);
+  const [fab, setFab] = useState<QuadroFabrica | null>(null);
   // Relógio de minuto em minuto, para "dado velho" e "aguardando mercado" mudarem sozinhos.
   const [agora, setAgora] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 60000); return () => clearInterval(t); }, []);
@@ -61,6 +64,7 @@ export function App() {
     if (e) setEx(e);
     setViz(vizinhasDeLinhas(r.linhas));
     setUltimaOk(r.lidoEm);
+    setFab(fabricaDeLinhas(r.linhas));
     setAgora(Date.now());
     const v = deLinhas(r.linhas);
     // Tabela ainda vazia: a VPS não mandou o primeiro resumo.
@@ -101,6 +105,7 @@ export function App() {
     vivo, viz, agora, conexao,
     pregao: { EUA: ex.aoVivo ? pregao(ex.spy, agora) : null, B3: ex.aoVivo ? pregao(ex.bova, agora) : null },
   }), [vivo, viz, agora, info, ultimaOk, ex]); // eslint-disable-line react-hooks/exhaustive-deps
+  const quadro = useMemo(() => fab || fabricaDoLab(ex.lab), [fab, ex]);
   const alertas = entidades.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado").length;
 
   const diSeguro = Math.min(di, dias.length - 1);
@@ -134,6 +139,7 @@ export function App() {
             options={[
               { value: "pregao", label: "Pregão", controls: "tela" },
               { value: "robos", label: "Robôs", count: alertas || undefined, controls: "tela" },
+              { value: "fabrica", label: "Fábrica", controls: "tela" },
               { value: "contas", label: "Contas", controls: "tela" },
               { value: "diario", label: "Diário", count: contarDiario(dias, diSeguro) || undefined, controls: "tela" },
               { value: "ajustes", label: "Ajustes", controls: "tela", badge: info.estado === "sem-endereco" ? "ligar" : undefined },
@@ -153,6 +159,7 @@ export function App() {
           />
         )}
         {aba === "robos" && <Robos lista={entidades} aoVivo={base === "aovivo"} />}
+        {aba === "fabrica" && <Fabrica f={quadro} />}
         {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} viz={viz} />}
         {aba === "diario" && <Diario dias={dias} di={diSeguro} />}
         {aba === "ajustes" && <Ajustes info={info} onSalvo={lerVivo} atualizacao={atualizacao} />}
