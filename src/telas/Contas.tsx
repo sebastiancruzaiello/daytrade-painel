@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { ChangeSummary, type MetricChange } from "../ui/affectui/change-summary";
-import { KS, NOME, COR, REF, fmt, pct, dBR, resumoConta, type Dia } from "../dados/formato";
+import { KS, NOME, COR, REF, fmt, pct, dBR, hora, resumoConta, type Dia } from "../dados/formato";
 import type { Base } from "../App";
 import { IconeConta } from "./icones";
 import { segurar, type Extras } from "../dados/mercados";
+import { CAPITAL, nomeViz, veredito, type Vizinhas as Viz, type LinhaBolsa } from "../dados/vizinhas";
 
 const ACOES = [["spy", "EUA · Segurar SPY", "#e8a25b"], ["bova", "B3 · Segurar BOVA11", "#5fcf8f"]] as const;
 
-export function Contas({ dias, di, pararTeste, base, ex }: { dias: Dia[]; di: number; pararTeste: boolean; base: Base; ex: Extras }) {
+export function Contas({ dias, di, pararTeste, base, ex, viz }: { dias: Dia[]; di: number; pararTeste: boolean; base: Base; ex: Extras; viz: Viz }) {
   return (
     <div className="contas">
       <Curva dias={dias} di={di} ex={ex} />
@@ -43,6 +44,7 @@ export function Contas({ dias, di, pararTeste, base, ex }: { dias: Dia[]; di: nu
           );
         })}
       </div>
+      <Vizinhas viz={viz} />
       <p className="nota">Cada conta de cripto começa com 10.000 USDT de mentira e é comparada com quem só comprasse e segurasse. Para EUA e B3 ainda não há robô: SPY e BOVA11 mostram quanto 10.000 virariam só segurando o fundo, com dividendos. É a régua que as estratégias de ações terão de vencer.</p>
     </div>
   );
@@ -102,6 +104,77 @@ function Curva({ dias, di, ex }: { dias: Dia[]; di: number; ex: Extras }) {
           {ACOES.map(([q, t, cor], i) => <span key={q}><i className="tracejado" style={{ ["--tc" as string]: cor }} />{t.split(" · ")[1].replace("Segurar", "segurar")} {fmt(acoes[i][m])}</span>)}
         </div>
       )}
+    </section>
+  );
+}
+
+const MERCADO = { eua: ["EUA", "#e8a25b"], b3: ["B3", "#5fcf8f"] } as Record<string, [string, string]>;
+
+// Bolsa (EUA e B3) e day trade em cripto, como a VPS mandou. Sempre o dia de hoje: não acompanha a régua do ensaio.
+function Vizinhas({ viz }: { viz: Viz }) {
+  const { bolsa, intradia } = viz;
+  if (!bolsa && !intradia) return (
+    <p className="nota">A bolsa (EUA e B3) e o day trade em cripto aparecem aqui assim que a VPS mandar o primeiro resumo deles.</p>
+  );
+  const blocos: ReactElement[] = [];
+  const freio = (s: string | null | undefined, botao: boolean) => botao ? "parada (botão de parar)" : s || "ativa";
+  if (bolsa) {
+    const merc = bolsa.relatorio.mercados || {};
+    Object.entries(merc).forEach(([mk, m]) => {
+      const [rotulo, cor] = MERCADO[mk] || [mk.toUpperCase(), "#9aa"];
+      const linhas = Object.values(m.linhas || {});
+      const sombra = (c: string) => linhas.find(l => l.grupo === "sombras" && l.conta === c);
+      const quando = m.ultimo_pregao ? `${m.pregoes} ${m.pregoes === 1 ? "pregão" : "pregões"} · ${dBR(m.ultimo_pregao).slice(0, 5)}` : `começa ${m.proximo_pregao ? dBR(m.proximo_pregao).slice(0, 5) : "—"}`;
+      linhas.filter(l => l.grupo !== "sombras").forEach((l: LinhaBolsa) => {
+        const ret = l.patrimonio / CAPITAL - 1, sb = sombra(l.conta), ver = veredito(l.veredito_lab);
+        const st = l.grupo === "contas" ? freio(l.situacao, bolsa.botao_parar) : "régua (só segurar)";
+        const changes: MetricChange[] = [
+          { label: "Patrimônio", change: `${fmt(l.patrimonio)} ${m.moeda} (${pct(ret)})`, tone: ret > 0 ? "good" : ret < 0 ? "bad" : "neutral" },
+          { label: "Queda desde o pico", change: pct(-Math.abs(l.queda_maxima)), tone: Math.abs(l.queda_maxima) > 0.15 ? "bad" : "neutral", direction: "down" },
+          { label: "Operações", change: `${l.operacoes}` + (l.imposto_pago ? ` · IR pago ${fmt(l.imposto_pago, 2)}` : ""), tone: "neutral" },
+          { label: "Situação", change: st + (l.motivo ? ` (${l.motivo})` : ""), tone: st === "ativa" || st.startsWith("régua") ? "neutral" : "bad" },
+        ];
+        if (sb) changes.push({ label: "Regra pura (sem freios)", change: pct(sb.patrimonio / CAPITAL - 1), tone: "neutral" });
+        if (ver) changes.push({ label: "Laboratório", change: ver, tone: "bad" });
+        blocos.push(
+          <div key={"b-" + mk + l.conta + l.grupo} style={{ ["--cor" as string]: cor }} className="conta-bloco">
+            <ChangeSummary title={`${rotulo} · ${nomeViz(l.conta)}`} period={quando} icon={<span className="conta-icone"><IconeConta /></span>} changes={changes} />
+          </div>);
+      });
+    });
+  }
+  if (intradia) {
+    const r = intradia.relatorio, ult = (r.boletins || []).slice(-1)[0];
+    Object.entries(r.contas || {}).forEach(([k, c]) => {
+      const ret = c.inicio_do_dia / CAPITAL - 1, dia = ult?.contas?.[k];
+      const changes: MetricChange[] = [
+        { label: "Patrimônio no começo do dia", change: `${fmt(c.inicio_do_dia)} USDT (${pct(ret)})`, tone: ret > 0 ? "good" : ret < 0 ? "bad" : "neutral" },
+        { label: "Operações hoje", change: `${c.operacoes_hoje.length}`, tone: "neutral" },
+        { label: "Último dia fechado", change: dia?.contas?.resultado_dia != null ? `${pct(dia.contas.resultado_dia)} em ${dBR(ult!.dia)}` : "ainda nenhum", tone: "neutral" },
+        { label: "Situação", change: freio(c.situacao, intradia.botao_parar), tone: c.situacao === "ativa" && !intradia.botao_parar ? "neutral" : "bad" },
+        { label: "Regra pura (sem freios)", change: pct(c.sombra_inicio_do_dia / CAPITAL - 1), tone: "neutral" },
+      ];
+      const ver = veredito(c.veredito);
+      if (ver) changes.push({ label: "Laboratório", change: ver, tone: "bad" });
+      blocos.push(
+        <div key={"i-" + k} style={{ ["--cor" as string]: "#b99cf0" }} className="conta-bloco">
+          <ChangeSummary title={`Day trade · ${nomeViz(k)}`} period={r.dia ? dBR(r.dia).slice(0, 5) : "hoje"} icon={<span className="conta-icone"><IconeConta /></span>} changes={changes} />
+        </div>);
+    });
+  }
+  const avisos = [bolsa, intradia].filter(Boolean).flatMap(v => [
+    !v!.diario_integro ? "diário com problema: " + (v!.diario_problema || "") : null,
+    v!.relatorio.erro || null,
+  ]).filter(Boolean);
+  return (
+    <section className="vizinhas">
+      <h2>Bolsa e day trade (ao vivo)</h2>
+      <p className="nota">
+        Cada conta começa com 10.000 de mentira. Hoje são regras reprovadas no laboratório, rodando só para observar como se
+        comportam ao vivo. Atualizado {hora(bolsa?.relatorio_em || intradia?.relatorio_em)}.
+      </p>
+      {avisos.map(a => <p key={a!} className="nota aviso">{a}</p>)}
+      <div className="contas-grade">{blocos}</div>
     </section>
   );
 }

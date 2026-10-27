@@ -4,6 +4,7 @@ import { GridBackground } from "./ui/affectui/grid-background";
 import { Button } from "./ui/affectui/button";
 import { deLinhas, fonteEnsaio, dBR, hora, type Fonte } from "./dados/formato";
 import { extrasDeLinhas, extrasEmbutidos, type Extras } from "./dados/mercados";
+import { vizinhasDeLinhas, type Vizinhas } from "./dados/vizinhas";
 import { Pregao } from "./telas/Pregao";
 import { Contas } from "./telas/Contas";
 import { Diario } from "./telas/Diario";
@@ -33,6 +34,7 @@ export function App() {
   const [dialogo, setDialogo] = useState(false);
   const jaTeveVivo = useRef(false);
   const [ex, setEx] = useState<Extras>(extrasEmbutidos);
+  const [viz, setViz] = useState<Vizinhas>({ bolsa: null, intradia: null });
   const atualizacao = useAtualizacao();
 
   const fonte: Fonte = useMemo(() => (base === "aovivo" && vivo ? vivo : fonteEnsaio(base === "longo" ? "longo" : "recente")), [base, vivo]);
@@ -50,6 +52,7 @@ export function App() {
     }
     const e = extrasDeLinhas(r.linhas);
     if (e) setEx(e);
+    setViz(vizinhasDeLinhas(r.linhas));
     const v = deLinhas(r.linhas);
     // Tabela ainda vazia: a VPS não mandou o primeiro resumo.
     if (!v) { setInfo({ estado: "erro", msg: "o n8n respondeu, mas ainda não chegou nenhum resumo da VPS" }); return; }
@@ -131,7 +134,7 @@ export function App() {
             info={info} vivo={vivo} ex={ex}
           />
         )}
-        {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} />}
+        {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} viz={viz} />}
         {aba === "diario" && <Diario dias={dias} di={diSeguro} />}
         {aba === "ajustes" && <Ajustes info={info} onSalvo={lerVivo} atualizacao={atualizacao} />}
       </main>
