@@ -9,12 +9,14 @@ import type { Base, InfoVivo } from "../App";
 import { IconePlay, IconePausa } from "./icones";
 import { Ficha } from "./Ficha";
 import { segurar, pregao, type Extras, type Mercado } from "../dados/mercados";
+import { ESTADOS, contarEstados, type Entidade, type Estado } from "../dados/estados";
 
 type Props = {
   fonte: Fonte; di: number; setDi: (i: number) => void;
   tocando: boolean; setTocando: (b: boolean) => void; passo: string; setPasso: (s: string) => void;
   base: Base; setBase: (b: Base) => void; temVivo: boolean; pararTeste: boolean;
   info: InfoVivo; vivo: Fonte | null; ex: Extras;
+  entidades: Entidade[]; verRobos: () => void;
 };
 
 export function Pregao(p: Props) {
@@ -81,6 +83,8 @@ export function Pregao(p: Props) {
           {selecionado
             ? <Ficha id={selecionado} fonte={fonte} di={di} pararTeste={pararTeste} aoVivo={base === "aovivo"} ex={p.ex} fechar={fecharFicha} />
             : <>
+                <h2>Situação agora</h2>
+                <Situacao lista={p.entidades} ver={p.verRobos} />
                 <h2>Avisos</h2>
                 <Avisos {...p} />
                 <Legenda />
@@ -187,6 +191,26 @@ function Avisos({ info, vivo, base, fonte, di }: Props) {
   const chave = lista.map(n => n.id + n.text).join("|");
   const estavel = useMemo(() => lista, [chave]); // eslint-disable-line react-hooks/exhaustive-deps
   return <NotificationStack notices={estavel} />;
+}
+
+// Quantos robôs em cada situação e quem precisa de atenção, com o motivo. "Aguardando mercado" não é problema.
+function Situacao({ lista, ver }: { lista: Entidade[]; ver: () => void }) {
+  const c = contarEstados(lista);
+  const atencao = lista.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado");
+  return (
+    <div className="situacao">
+      <div className="resumo-estados">
+        {(Object.keys(ESTADOS) as Estado[]).filter(k => c[k]).map(k => (
+          <span key={k} className={"chip-estado tom-" + ESTADOS[k].tom} title={ESTADOS[k].explica}><i aria-hidden="true" />{ESTADOS[k].rotulo} <b>{c[k]}</b></span>
+        ))}
+      </div>
+      {atencao.slice(0, 4).map(x => (
+        <p key={x.id} className="situacao-item"><b>{x.nome}</b> <span className={"pilula-estado tom-" + ESTADOS[x.estado].tom}>{ESTADOS[x.estado].rotulo}</span><br /><span className="muted">{x.motivo}</span></p>
+      ))}
+      {atencao.length > 4 && <p className="muted pequeno">e mais {atencao.length - 4}.</p>}
+      <button type="button" className="link" onClick={ver}>Ver todos os {lista.length}, com filtros e detalhes ›</button>
+    </div>
+  );
 }
 
 function Legenda() {
