@@ -44,6 +44,7 @@ export function Contas({ dias, di, pararTeste, base, ex, viz }: { dias: Dia[]; d
           );
         })}
       </div>
+      <Carteiras viz={viz} />
       <Vizinhas viz={viz} />
       <p className="nota">Cada conta de cripto começa com 10.000 USDT de mentira e é comparada com quem só comprasse e segurasse. Para EUA e B3 ainda não há robô: SPY e BOVA11 mostram quanto 10.000 virariam só segurando o fundo, com dividendos. É a régua que as estratégias de ações terão de vencer.</p>
     </div>
@@ -104,6 +105,44 @@ function Curva({ dias, di, ex }: { dias: Dia[]; di: number; ex: Extras }) {
           {ACOES.map(([q, t, cor], i) => <span key={q}><i className="tracejado" style={{ ["--tc" as string]: cor }} />{t.split(" · ")[1].replace("Segurar", "segurar")} {fmt(acoes[i][m])}</span>)}
         </div>
       )}
+    </section>
+  );
+}
+
+const COR_CARTEIRA: Record<string, string> = { brasil: "#5fcf8f", eua: "#e8a25b", cripto: "#f39a3d" };
+
+// Três carteiras de referência com R$ 100 cada: só segurar, com lote, custos e câmbio de verdade.
+function Carteiras({ viz }: { viz: Viz }) {
+  const c = viz.carteiras;
+  if (!c) return null;
+  const r = c.relatorio, cap = r.capital_brl || 100;
+  const real = (v: number) => "R$ " + fmt(v, 2);
+  return (
+    <section className="vizinhas">
+      <h2>Carteiras de referência · R$ {fmt(cap)} cada</h2>
+      <p className="nota">
+        Dinheiro de mentira. Cada carteira compra o ativo de referência quando R$ {fmt(cap)} dão para comprar e nunca vende.
+        Os resultados são separados e não se somam. Atualizado {hora(c.relatorio_em)}.
+      </p>
+      {(r.avisos || []).map(a => <p key={a} className="nota aviso">{a}</p>)}
+      <div className="contas-grade">
+        {Object.entries(r.carteiras || {}).map(([k, w]) => {
+          const insuf = w.situacao === "capital insuficiente";
+          const changes: MetricChange[] = [
+            { label: "Valor hoje", change: `${real(w.valor_brl)} (${pct(w.resultado)})`, tone: w.resultado > 0 ? "good" : w.resultado < 0 ? "bad" : "neutral" },
+            { label: "Situação", change: w.situacao + (w.motivo ? ` (${w.motivo})` : ""), tone: w.situacao === "investida" ? "good" : insuf ? "bad" : "neutral", direction: w.situacao === "investida" ? "up" : "down" },
+          ];
+          if (insuf && w.minimo_brl) changes.push({ label: "Mínimo para a 1ª compra", change: real(w.minimo_brl), tone: "neutral" });
+          if (w.quantidade) changes.push({ label: "Posição", change: `${w.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 8 })} ${w.ativo} desde ${w.comprou_em ? dBR(w.comprou_em) : "—"}`, tone: "neutral" });
+          if (w.preco_atual) changes.push({ label: "Preço do " + w.ativo, change: `${fmt(w.preco_atual, 2)} ${w.moeda}` + (w.dia_do_preco ? ` em ${dBR(w.dia_do_preco).slice(0, 5)}` : ""), tone: "neutral" });
+          changes.push({ label: "Premissa", change: w.premissa, tone: "neutral" });
+          return (
+            <div key={k} style={{ ["--cor" as string]: COR_CARTEIRA[k] || "#9aa" }} className="conta-bloco">
+              <ChangeSummary title={`${w.nome} · ${w.ativo}`} period={r.ultimo_dia ? dBR(r.ultimo_dia).slice(0, 5) : "—"} icon={<span className="conta-icone"><IconeConta /></span>} changes={changes} />
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
