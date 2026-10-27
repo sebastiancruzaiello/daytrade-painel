@@ -11,6 +11,7 @@ export type Fonte = { sy: string[]; f0: string; fech: Record<string, (number | n
 export type Status = {
   gerado_em: string; ultima_rodada?: string; diario_integro: boolean; diario_linhas?: number;
   diario_problema?: string; botao_parar?: boolean; motivo_parar?: string; situacao: Record<string, string>;
+  motivo?: Record<string, string | null>; ultimo_vigia?: string | null;
 };
 export type Linha = { chave: string; conteudo: string; atualizado?: string | null };
 

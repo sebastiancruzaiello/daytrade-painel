@@ -3,9 +3,11 @@ import { SegmentedControl } from "./ui/affectui/segmented-control";
 import { GridBackground } from "./ui/affectui/grid-background";
 import { Button } from "./ui/affectui/button";
 import { deLinhas, fonteEnsaio, dBR, hora, type Fonte } from "./dados/formato";
-import { extrasDeLinhas, extrasEmbutidos, type Extras } from "./dados/mercados";
+import { extrasDeLinhas, extrasEmbutidos, pregao, type Extras } from "./dados/mercados";
 import { vizinhasDeLinhas, type Vizinhas } from "./dados/vizinhas";
 import { Pregao } from "./telas/Pregao";
+import { Robos } from "./telas/Robos";
+import { montarEntidades, type Conexao } from "./dados/estados";
 import { Contas } from "./telas/Contas";
 import { Diario } from "./telas/Diario";
 import { Ajustes } from "./telas/Ajustes";
@@ -18,7 +20,7 @@ export type InfoVivo =
   | { estado: "sem-programa" | "sem-endereco" | "lendo" }
   | { estado: "ok"; lidoEm: string; geradoEm: string; diasVivo: number }
   | { estado: "erro"; msg: string };
-type Aba = "pregao" | "contas" | "diario" | "ajustes";
+type Aba = "pregao" | "robos" | "contas" | "diario" | "ajustes";
 
 const DEZ_MIN = 10 * 60 * 1000;
 
@@ -36,6 +38,11 @@ export function App() {
   const [ex, setEx] = useState<Extras>(extrasEmbutidos);
   const [viz, setViz] = useState<Vizinhas>({ bolsa: null, intradia: null, carteiras: null });
   const atualizacao = useAtualizacao();
+  // Última leitura boa: numa falha, o salão continua mostrando o que chegou e diz desde quando.
+  const [ultimaOk, setUltimaOk] = useState<string | null>(null);
+  // Relógio de minuto em minuto, para "dado velho" e "aguardando mercado" mudarem sozinhos.
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 60000); return () => clearInterval(t); }, []);
 
   const fonte: Fonte = useMemo(() => (base === "aovivo" && vivo ? vivo : fonteEnsaio(base === "longo" ? "longo" : "recente")), [base, vivo]);
   const dias = fonte.dias;
@@ -53,6 +60,8 @@ export function App() {
     const e = extrasDeLinhas(r.linhas);
     if (e) setEx(e);
     setViz(vizinhasDeLinhas(r.linhas));
+    setUltimaOk(r.lidoEm);
+    setAgora(Date.now());
     const v = deLinhas(r.linhas);
     // Tabela ainda vazia: a VPS não mandou o primeiro resumo.
     if (!v) { setInfo({ estado: "erro", msg: "o n8n respondeu, mas ainda não chegou nenhum resumo da VPS" }); return; }
@@ -86,6 +95,14 @@ export function App() {
     return () => clearInterval(t);
   }, [tocando, passo, dias]);
 
+  const conexao: Conexao = info.estado === "erro" ? { estado: "erro", msg: info.msg, ultimaOk }
+    : info.estado === "ok" ? { estado: "ok", lidoEm: info.lidoEm } : { estado: info.estado };
+  const entidades = useMemo(() => montarEntidades({
+    vivo, viz, agora, conexao,
+    pregao: { EUA: ex.aoVivo ? pregao(ex.spy, agora) : null, B3: ex.aoVivo ? pregao(ex.bova, agora) : null },
+  }), [vivo, viz, agora, info, ultimaOk, ex]); // eslint-disable-line react-hooks/exhaustive-deps
+  const alertas = entidades.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado").length;
+
   const diSeguro = Math.min(di, dias.length - 1);
   const dia = dias[diSeguro];
   const selo = base === "aovivo" ? "Ao vivo" : "Ensaio";
@@ -116,6 +133,7 @@ export function App() {
             aria-label="Telas"
             options={[
               { value: "pregao", label: "Pregão", controls: "tela" },
+              { value: "robos", label: "Robôs", count: alertas || undefined, controls: "tela" },
               { value: "contas", label: "Contas", controls: "tela" },
               { value: "diario", label: "Diário", count: contarDiario(dias, diSeguro) || undefined, controls: "tela" },
               { value: "ajustes", label: "Ajustes", controls: "tela", badge: info.estado === "sem-endereco" ? "ligar" : undefined },
@@ -131,9 +149,10 @@ export function App() {
             fonte={fonte} di={diSeguro} setDi={i => { setTocando(false); setDi(i); }}
             tocando={tocando} setTocando={setTocando} passo={passo} setPasso={setPasso}
             base={base} setBase={setBase} temVivo={!!vivo} pararTeste={pararTeste}
-            info={info} vivo={vivo} ex={ex}
+            info={info} vivo={vivo} ex={ex} entidades={entidades} verRobos={() => setAba("robos")}
           />
         )}
+        {aba === "robos" && <Robos lista={entidades} aoVivo={base === "aovivo"} />}
         {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} viz={viz} />}
         {aba === "diario" && <Diario dias={dias} di={diSeguro} />}
         {aba === "ajustes" && <Ajustes info={info} onSalvo={lerVivo} atualizacao={atualizacao} />}

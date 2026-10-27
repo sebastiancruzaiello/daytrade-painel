@@ -9,6 +9,11 @@ Feito com Electron, React e componentes do [affectUI](https://github.com/flohoel
 - Atualiza sozinho a partir dos lançamentos deste repositório (electron-updater). Cada lançamento é montado e publicado pelo
   GitHub Actions (`.github/workflows/publicar.yml`) quando a versão do `package.json` muda.
 
+## Situação de cada robô
+
+A tela Robôs mostra todos os robôs, réguas e carteiras ao vivo, com filtros e a ficha de cada um. O que cada
+situação quer dizer (ativo, aguardando mercado, falha de conexão, dado velho…) está em [`docs/ESTADOS.md`](docs/ESTADOS.md).
+
 ## Desenvolver
 
     npm ci
