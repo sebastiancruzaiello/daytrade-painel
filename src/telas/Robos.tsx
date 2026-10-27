@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/affectui/button";
 import { fmt, pct } from "../dados/formato";
+import { TIPOS } from "../dados/detalhe";
 import {
   ESTADOS, CAMPOS, TODOS, filtrar, filtroVazio, opcoes, contarEstados,
-  type Entidade, type Estado, type Filtro,
+  type Entidade, type Estado, type Filtro, type Evento,
 } from "../dados/estados";
 
 // Todos os robôs, réguas e carteiras ao vivo, com filtros e a ficha completa de cada um. Só olha.
@@ -97,6 +98,8 @@ function Cartao({ x, ativo, abrir }: { x: Entidade; ativo: boolean; abrir: () =>
         {x.patrimonio != null ? <>{dinheiro(x.patrimonio, x.moeda)} <small className={tomRes(x.resultado)}>{x.resultado != null ? pct(x.resultado) : ""}</small></> : <small className="muted">sem número ainda</small>}
       </p>
       <p className="robo-motivo">{x.motivo}</p>
+      {x.decisao && <p className="robo-decisao"><b>{TIPOS[x.decisao.tipo!].rotulo}</b> {x.decisao.txt.replace(/^não operou: /, "")}</p>}
+      {x.carteira?.fecha === false && <p className="robo-alerta">O caixa não fecha com o diário. Veja o detalhe.</p>}
       <p className="robo-rodape"><span>{x.amostra}</span>{x.ultima && <span>{x.ultima}</span>}</p>
     </button>
   );
@@ -141,18 +144,14 @@ function Detalhe({ x, fechar }: { x: Entidade; fechar: () => void }) {
       <dl className="detalhe-fatos">
         {fatos.map(([k, v, cls]) => <div key={k}><dt>{k}</dt><dd className={cls}>{v}</dd></div>)}
       </dl>
-      {x.carteira && (
-        <>
-          <h3>Carteira</h3>
-          <dl className="detalhe-fatos">
-            <div><dt>Caixa disponível</dt><dd>R$ {fmt(x.carteira.caixa, 2)}</dd></div>
-            <div><dt>Reservado por outro robô</dt><dd>R$ {fmt(x.carteira.reservado, 2)} (só um robô por carteira)</dd></div>
-            <div><dt>Exposição no ativo</dt><dd>R$ {fmt(x.carteira.exposicao, 2)}</dd></div>
-            <div><dt>Conciliação</dt><dd className={x.carteira.fecha ? "ok" : "ruim"}>{x.carteira.nota}</dd></div>
-          </dl>
-          <p className="muted pequeno">O caixa é calculado: valor da carteira menos o que está no ativo, ao preço e câmbio do dia.</p>
-        </>
+      {x.decisao && (
+        <div className={"detalhe-decisao tipo-" + x.decisao.tipo}>
+          <span className="tipo-evento">{TIPOS[x.decisao.tipo!].rotulo}</span>
+          <p>{semRotulo(x.decisao.txt)}</p>
+          <p className="muted pequeno">Última decisão do robô, {quando(x.decisao)}.</p>
+        </div>
       )}
+      {x.carteira && <Dinheiro x={x} />}
       <h3>Regra aplicada</h3>
       <p>{x.regra}</p>
       <h3>Dados usados</h3>
@@ -162,9 +161,82 @@ function Detalhe({ x, fechar }: { x: Entidade; fechar: () => void }) {
       <h3>Custo de computação</h3>
       <p>{x.custoIA}</p>
       <h3>Linha do tempo</h3>
-      {x.linha.length
-        ? <ul className="ficha-lista">{x.linha.map((ev, n) => <li key={n}><time>{ev.d.length > 10 ? ev.d.slice(11) : ev.d.slice(8, 10) + "/" + ev.d.slice(5, 7)}</time><span className={ev.tom === "bom" ? "up" : ev.tom === "ruim" ? "dn" : ""}>{ev.txt}</span></li>)}</ul>
-        : <p className="muted">Nada registrado ainda.</p>}
+      <LinhaDoTempo linha={x.linha} />
     </aside>
+  );
+}
+
+// O selo já diz "não operou"; o texto não precisa repetir.
+const semRotulo = (t: string) => t.replace(/^não operou: /, "").replace(/^./, c => c.toUpperCase());
+
+// Data e hora curtas (dd/mm hh:mm no fuso do computador); dia sem hora fica só dd/mm.
+function dataCurta(d: string) {
+  if (d.length <= 10) return d.slice(8, 10) + "/" + d.slice(5, 7);
+  if (/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(d)) return d.slice(8, 10) + "/" + d.slice(5, 7) + " " + d.slice(11);
+  const t = new Date(d);
+  return isNaN(+t) ? d : t.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", "");
+}
+const quando = (ev: Evento) => ev.vezes && ev.desde ? `${ev.vezes} vezes seguidas, de ${dataCurta(ev.desde)} a ${dataCurta(ev.d)}` : dataCurta(ev.d);
+
+function Dinheiro({ x }: { x: Entidade }) {
+  const c = x.carteira!;
+  const moeda = c.moeda || x.moeda;
+  const v = (n: number | null | undefined) => n == null ? "—" : dinheiro(n, moeda);
+  return (
+    <>
+      <h3>Dinheiro</h3>
+      <dl className="detalhe-fatos">
+        <div><dt>Caixa disponível</dt><dd>{v(c.caixa)}{c.caixaLocal ? <small className="muted"> (inclui sobra de {fmt(c.caixaLocal, 2)} na moeda do ativo)</small> : null}</dd></div>
+        <div><dt>Reservado</dt><dd>{v(c.reservado)}</dd></div>
+        <div><dt>Exposição (no ativo)</dt><dd>{v(c.exposicao)}</dd></div>
+        {c.pendente && <div><dt>Decisão pendente</dt><dd>{c.pendente}</dd></div>}
+        <div><dt>Conciliação</dt><dd className={c.fecha === true ? "ok" : c.fecha === false ? "ruim" : "muted"}>{c.nota}</dd></div>
+      </dl>
+      <p className="muted pequeno">
+        {c.real
+          ? <>Números do estado da simulação na VPS{c.aPrecoDe ? `; exposição ao preço de ${dataCurta(c.aPrecoDe)}` : ""}. Reservado é dinheiro separado para uma ordem que outro robô vai fazer na mesma carteira: hoje cada robô tem a sua, então fica zero. A conciliação refaz o caixa pelo diário (capital, cada ordem e seu custo) e compara com o estado.</>
+          : <>A VPS ainda não manda o detalhe: o caixa é calculado como valor da carteira menos o que está no ativo, ao preço e câmbio do dia.</>}
+      </p>
+    </>
+  );
+}
+
+const FILTROS_LINHA: { k: string; rotulo: string; ok: (e: Evento) => boolean }[] = [
+  { k: "tudo", rotulo: "Tudo", ok: () => true },
+  { k: "op", rotulo: "Operou", ok: e => e.tipo === "op" || (!e.tipo && e.tom !== "ruim") },
+  { k: "nao", rotulo: "Não operou", ok: e => e.tipo === "nao" },
+  { k: "freio", rotulo: "Recusas e freios", ok: e => e.tipo === "rec" || e.tipo === "freio" || (!e.tipo && e.tom === "ruim") },
+];
+
+function LinhaDoTempo({ linha }: { linha: Evento[] }) {
+  const [f, setF] = useState("tudo");
+  const temTipos = linha.some(e => e.tipo);
+  const vistos = linha.filter(FILTROS_LINHA.find(x => x.k === f)!.ok);
+  if (!linha.length) return <p className="muted">Nada registrado ainda.</p>;
+  return (
+    <>
+      {temTipos && (
+        <div className="linha-filtro" role="group" aria-label="Filtrar a linha do tempo">
+          {FILTROS_LINHA.map(x => (
+            <button key={x.k} type="button" className={"chip-linha" + (f === x.k ? " ligado" : "")} aria-pressed={f === x.k} onClick={() => setF(x.k)}>
+              {x.rotulo} <b>{linha.filter(x.ok).length}</b>
+            </button>
+          ))}
+        </div>
+      )}
+      <ul className="ficha-lista linha-tempo">
+        {vistos.map((ev, n) => (
+          <li key={n} className={ev.tipo ? "tipo-" + ev.tipo : ""}>
+            <time title={ev.d}>{dataCurta(ev.d)}</time>
+            <span>
+              {ev.tipo && <span className="tipo-evento" title={TIPOS[ev.tipo].explica}>{TIPOS[ev.tipo].rotulo}</span>}
+              <span className={ev.tom === "bom" ? "up" : ev.tom === "ruim" ? "dn" : ""}>{ev.txt}</span>
+              {ev.vezes && ev.desde ? <small className="muted"> · {ev.vezes} vezes desde {dataCurta(ev.desde)}</small> : null}
+            </span>
+          </li>
+        ))}
+        {!vistos.length && <li className="muted">Nada desse tipo nos registros recentes.</li>}
+      </ul>
+    </>
   );
 }

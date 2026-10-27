@@ -60,7 +60,7 @@ h1 span { color: var(--muted); font-weight: 500; }
 .abas { padding: 0 20px; }
 
 /* ---------- tela ---------- */
-.tela { flex: 1; width: 100%; max-width: 1380px; margin: 0 auto; padding: 20px 28px 28px; animation: entra 420ms var(--ease) both; }
+.tela { flex: 1; width: 100%; max-width: 1380px; margin: 0 auto; padding: 20px 28px 28px; animation: entra 420ms var(--ease) backwards; /* "backwards": sem transform depois que entra, senão o detalhe fixo do celular fica preso à tela e abre fora da vista */ }
 @keyframes entra { from { opacity: 0; transform: translateY(6px); } }
 .rodape { color: var(--muted); font-size: 12px; text-align: center; padding: 10px 24px 18px; border-top: 1px solid var(--line); }
 .nota { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
@@ -251,6 +251,25 @@ button.chip-estado:hover { background: var(--card-2); }
 .detalhe-fatos dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; min-width: 0; }
 
 /* ---------- janela estreita e celular ---------- */
+/* ---------- detalhe: decisões, dinheiro e linha do tempo (0.1.10) ---------- */
+.tipo-op { --tipo: var(--accent); }
+.tipo-nao { --tipo: #7fb0ff; }
+.tipo-rec, .tipo-freio { --tipo: var(--bad); }
+.tipo-info { --tipo: var(--muted); }
+.tipo-evento { display: inline-block; font-size: 10.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--tipo, var(--muted)); border: 1px solid color-mix(in srgb, var(--tipo, var(--muted)) 50%, transparent); border-radius: 4px; padding: 0 5px; margin-right: 6px; white-space: nowrap; }
+.robo-decisao { margin: 0; font-size: 12px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.robo-decisao b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+.robo-alerta { margin: 0; font-size: 12px; color: var(--bad); }
+.detalhe-decisao { border-left: 3px solid var(--tipo); padding: 6px 10px; background: var(--tray); border-radius: 0 var(--radius) var(--radius) 0; }
+.detalhe-decisao p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; }
+.linha-filtro { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip-linha { font: 500 12px var(--sans); color: var(--ink); background: var(--tray); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; cursor: pointer; min-height: 30px; }
+.chip-linha.ligado { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--tray)); }
+.chip-linha b { font-variant-numeric: tabular-nums; margin-left: 2px; }
+.linha-tempo li { align-items: baseline; line-height: 1.45; }
+.linha-tempo li time { min-width: 82px; }
+.detalhe-fatos dd small { display: block; }
+
 @media (max-width: 900px) {
   .robos.com-detalhe { grid-template-columns: minmax(0, 1fr); }
   .detalhe { position: fixed; inset: 0; z-index: 20; max-height: none; border-radius: 0; border: 0; padding: 18px 16px 28px; }
@@ -298,4 +317,10 @@ button.chip-estado:hover { background: var(--card-2); }
 @media (max-width: 640px) {
   .esteira { grid-auto-flow: row; grid-auto-columns: auto; overflow-x: visible; }
   .etapa { min-height: 0; }
+}
+@media (max-width: 640px) {
+  .linha-tempo li { flex-direction: column; gap: 0; }
+  .linha-tempo li time { min-width: 0; font-size: 11.5px; }
+  .detalhe-fatos div { flex-wrap: wrap; }
+  .detalhe-fatos dd { text-align: left; }
 }

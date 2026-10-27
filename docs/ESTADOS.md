@@ -37,8 +37,37 @@ nunca se confundem (Plano Geral 2.0, §17).
 | Day trade em cripto | de minuto em minuto | 20 min |
 | Carteiras R$ 100 | uma vez por dia, 19h50 de Brasília | 26 h |
 
+## Detalhe de cada robô (0.1.10, linha `robos:detalhe`)
+
+A situação diz **se** o robô está rodando. O detalhe diz **o que ele fez e por quê**. Vem numa linha só da VPS,
+`robos:detalhe`, gravada pelo exportador (daytrade-lab, `painel-aovivo/painel/detalhe.py`). Ele só lê o diário e o
+estado de cada simulação. O detalhe nunca muda a situação: um robô "ativo" continua ativo mesmo quando decidiu
+não operar.
+
+Cada entrada da linha do tempo tem um selo:
+
+| Selo | Quer dizer |
+|---|---|
+| operou | Ordem executada, com o custo pago naquela ordem. |
+| não operou | O robô olhou e decidiu não mandar ordem. O motivo vem da regra, com os números do dia. Exemplos: "a regra manda seguir comprado e já estava", "o momentum só escolhe às segundas", "checagem das 11:00: preço abaixo do teto", "R$ 100 não compram 1 BOVA11". Dias seguidos com a mesma decisão viram uma linha só ("30 vezes desde 02/09"). |
+| recusada | O robô quis operar e o motor de risco recusou. Exemplos: dia de FOMC, preço velho, limite de ordens. |
+| freio | Motor de risco ou botão: pausou, parou, zerou, voltou. |
+| registro | Pregão fechado com a decisão para o próximo, dividendo, imposto, fim do dia do day trade. |
+
+Na ficha aparecem a **última decisão** (logo abaixo da situação) e o quadro **Dinheiro**:
+
+- **Caixa disponível.** É o caixa do `estado.json` da simulação. Na carteira de R$ 100 em dólar ou cripto, inclui a sobra na moeda do ativo, convertida.
+- **Reservado.** É dinheiro separado para a ordem de outro robô na mesma carteira. Hoje cada robô tem a sua carteira, então fica **zero**. A carteira compartilhada com reserva (`lab/contas`) existe, mas ainda não está ligada a nenhuma simulação.
+- **Exposição.** É o que está aplicado no ativo, ao último preço que a simulação usou. A data aparece embaixo.
+- **Decisão pendente.** Só existe na bolsa: o que a regra decidiu no fechamento e vai executar na próxima abertura.
+- **Conciliação.** O caixa é refeito pelo diário (capital inicial, cada ordem com seu custo, dividendos e imposto) e comparado com o estado.
+  - "Fecha" quer dizer que os dois batem (diferença de até 0,05).
+  - "Não fecha" mostra a diferença e um aviso vermelho no cartão. Alguém deve olhar: pode ser estado mexido à mão ou ordem que não foi para o diário.
+  - Na régua, que compra uma vez e não registra ordem no diário, aparece "não se aplica".
+
+Sem a linha `robos:detalhe`, tudo continua como antes. A linha do tempo é a do resumo e o caixa da carteira é calculado.
+
 ## O que ainda não vem da VPS
 
-- Custos pagos do cripto diário e do day trade: o resumo não traz. O detalhe diz "não informado pela simulação".
-- Caixa das carteiras: é calculado (valor menos o que está no ativo); a conciliação confere se faz sentido.
-- Histórico por pregão das contas da bolsa: só o último pregão e o total de operações.
+- Até o exportador novo ser publicado na VPS (PR daytrade-lab#32), custos do cripto diário e do day trade não aparecem, e o caixa das carteiras é calculado.
+- A reserva de caixa só passa a ter número quando algum robô usar a carteira compartilhada.

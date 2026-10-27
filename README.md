@@ -24,6 +24,19 @@ hipótese, triagem, regra congelada, código, testes técnicos, teste histórico
 
 Campos a mais são ignorados. Sem essa linha, a tela usa as fichas e vereditos do `lab:resumo`.
 
+## Detalhe de cada robô
+
+Desde a 0.1.10 a ficha de cada robô lê a linha `robos:detalhe`, quando ela vem. Ela traz:
+
+- a linha do tempo com o que o robô fez e o que **decidiu não fazer e por quê**, com selos e filtro;
+- os custos reais;
+- caixa, reservado e exposição;
+- a decisão pendente da bolsa;
+- a conciliação do caixa refeito pelo diário.
+
+No cartão aparecem a última decisão e um aviso quando o caixa não fecha. O formato e o significado de cada campo
+estão em `docs/ESTADOS.md`. Sem a linha, a ficha fica como na 0.1.9.
+
 ## Desenvolver
 
     npm ci

@@ -10,6 +10,7 @@ import { Robos } from "./telas/Robos";
 import { Fabrica } from "./telas/Fabrica";
 import { fabricaDeLinhas, fabricaDoLab, type Fabrica as QuadroFabrica } from "./dados/fabrica";
 import { montarEntidades, type Conexao } from "./dados/estados";
+import { detalheDeLinhas, type Detalhes } from "./dados/detalhe";
 import { Contas } from "./telas/Contas";
 import { Diario } from "./telas/Diario";
 import { Ajustes } from "./telas/Ajustes";
@@ -43,6 +44,7 @@ export function App() {
   // Última leitura boa: numa falha, o salão continua mostrando o que chegou e diz desde quando.
   const [ultimaOk, setUltimaOk] = useState<string | null>(null);
   const [fab, setFab] = useState<QuadroFabrica | null>(null);
+  const [detalhe, setDetalhe] = useState<Detalhes | null>(null);
   // Relógio de minuto em minuto, para "dado velho" e "aguardando mercado" mudarem sozinhos.
   const [agora, setAgora] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 60000); return () => clearInterval(t); }, []);
@@ -65,6 +67,7 @@ export function App() {
     setViz(vizinhasDeLinhas(r.linhas));
     setUltimaOk(r.lidoEm);
     setFab(fabricaDeLinhas(r.linhas));
+    setDetalhe(detalheDeLinhas(r.linhas));
     setAgora(Date.now());
     const v = deLinhas(r.linhas);
     // Tabela ainda vazia: a VPS não mandou o primeiro resumo.
@@ -102,9 +105,9 @@ export function App() {
   const conexao: Conexao = info.estado === "erro" ? { estado: "erro", msg: info.msg, ultimaOk }
     : info.estado === "ok" ? { estado: "ok", lidoEm: info.lidoEm } : { estado: info.estado };
   const entidades = useMemo(() => montarEntidades({
-    vivo, viz, agora, conexao,
+    vivo, viz, agora, conexao, detalhe,
     pregao: { EUA: ex.aoVivo ? pregao(ex.spy, agora) : null, B3: ex.aoVivo ? pregao(ex.bova, agora) : null },
-  }), [vivo, viz, agora, info, ultimaOk, ex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }), [vivo, viz, agora, info, ultimaOk, ex, detalhe]); // eslint-disable-line react-hooks/exhaustive-deps
   const quadro = useMemo(() => fab || fabricaDoLab(ex.lab), [fab, ex]);
   const alertas = entidades.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado").length;
 

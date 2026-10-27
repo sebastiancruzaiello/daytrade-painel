@@ -2,6 +2,7 @@
 // Este arquivo não importa nada em tempo de execução (só tipos): os testes rodam direto no Node.
 import type { Fonte } from "./formato";
 import type { Vizinhas, LinhaBolsa } from "./vizinhas";
+import type { Detalhes, DetalheRobo, EventoDetalhe, TipoEvento } from "./detalhe";
 
 // Os estados que o salão mostra. "Aguardando mercado" e "falha de conexão" nunca se confundem (Plano 2.0 §17).
 export type Estado =
@@ -22,8 +23,13 @@ export const ESTADOS: Record<Estado, { rotulo: string; tom: Tom; explica: string
 
 export type Mercado = "Cripto" | "EUA" | "B3";
 export type Tipo = "robo" | "regua" | "carteira";
-export type Evento = { d: string; txt: string; tom?: "bom" | "ruim" | "neutro" };
-export type Conciliacao = { capital: number; caixa: number; reservado: number; exposicao: number; fecha: boolean; nota: string };
+export type Evento = { d: string; txt: string; tom?: "bom" | "ruim" | "neutro"; tipo?: TipoEvento; vezes?: number; desde?: string };
+// Dinheiro de um robô ou carteira. "real" = números do estado.json da VPS (linha robos:detalhe); senão, calculado.
+export type Conciliacao = {
+  capital: number; caixa: number | null; reservado: number; exposicao: number | null; fecha: boolean | null; nota: string;
+  moeda?: string; real?: boolean; aPrecoDe?: string | null; pendente?: string | null; caixaLocal?: number | null;
+  diferenca?: number;
+};
 
 export type Entidade = {
   id: string; tipo: Tipo; nome: string;
@@ -36,6 +42,7 @@ export type Entidade = {
   sombra?: number | null;
   linha: Evento[];
   carteira?: Conciliacao;
+  decisao?: Evento | null;   // última decisão (operou, não operou ou recusada), quando a VPS manda o detalhe
 };
 
 // Como está a ligação do painel com o n8n (vem do App).
@@ -48,7 +55,7 @@ export type Conexao =
 export type PregaoAgora = { aberto: boolean; texto: string } | null;
 
 export type Entrada = {
-  vivo: Fonte | null; viz: Vizinhas; agora: number; conexao: Conexao;
+  vivo: Fonte | null; viz: Vizinhas; agora: number; conexao: Conexao; detalhe?: Detalhes | null;
   pregao: { EUA: PregaoAgora; B3: PregaoAgora };
 };
 
@@ -305,7 +312,26 @@ export function conciliar(w: { valor_brl: number; quantidade: number; preco_atua
 }
 
 export function montarEntidades(e: Entrada): Entidade[] {
-  return [...cripto(e), ...intradia(e), ...bolsa(e), ...carteiras(e)];
+  const todas = [...cripto(e), ...intradia(e), ...bolsa(e), ...carteiras(e)];
+  return e.detalhe ? todas.map(x => comDetalhe(x, e.detalhe!.robos[x.id])) : todas;
+}
+
+const TOM: Record<TipoEvento, Evento["tom"]> = { op: "neutro", nao: "neutro", rec: "ruim", freio: "ruim", info: "neutro" };
+const evento = (x: EventoDetalhe): Evento => ({ d: x.em, txt: x.txt, tom: x.tipo === "freio" && /voltou|retomada|encerrada/.test(x.txt) ? "bom" : TOM[x.tipo], tipo: x.tipo, vezes: x.vezes, desde: x.desde });
+
+// Junta o detalhe da VPS: linha do tempo com as decisões de não operar, custos reais, caixa e conciliação.
+// O estado (situação) não muda: ele vem dos prazos e da conexão; o detalhe só explica melhor.
+export function comDetalhe(x: Entidade, d: DetalheRobo | undefined): Entidade {
+  if (!d) return x;
+  const linha = d.linha.length ? d.linha.map(evento).reverse() : x.linha;
+  const decisao = [...d.linha].reverse().find(v => v.tipo === "op" || v.tipo === "nao" || v.tipo === "rec");
+  const carteira: Conciliacao = {
+    capital: x.capital, caixa: d.caixa, reservado: d.reservado, exposicao: d.exposicao,
+    fecha: d.conciliacao.fecha, nota: d.conciliacao.nota, moeda: d.moeda || x.moeda, real: true,
+    aPrecoDe: d.a_preco_de, pendente: d.pendente, caixaLocal: d.caixa_local ?? null, diferenca: d.conciliacao.diferenca,
+  };
+  const custos = d.custos != null ? d.custos + (x.mercado !== "Cripto" && x.tipo !== "carteira" ? d.imposto ?? 0 : 0) : x.custos;
+  return { ...x, linha, decisao: decisao ? evento(decisao) : null, carteira, custos };
 }
 
 // ---------- filtros ----------
