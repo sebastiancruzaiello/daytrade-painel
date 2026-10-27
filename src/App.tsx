@@ -34,7 +34,7 @@ export function App() {
   const [dialogo, setDialogo] = useState(false);
   const jaTeveVivo = useRef(false);
   const [ex, setEx] = useState<Extras>(extrasEmbutidos);
-  const [viz, setViz] = useState<Vizinhas>({ bolsa: null, intradia: null });
+  const [viz, setViz] = useState<Vizinhas>({ bolsa: null, intradia: null, carteiras: null });
   const atualizacao = useAtualizacao();
 
   const fonte: Fonte = useMemo(() => (base === "aovivo" && vivo ? vivo : fonteEnsaio(base === "longo" ? "longo" : "recente")), [base, vivo]);

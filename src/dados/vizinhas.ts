@@ -24,7 +24,13 @@ type Envelope<R> = {
 };
 export type SimBolsa = Envelope<{ mercados?: Record<string, MercadoBolsa>; proximos_eventos?: [string, string][] }>;
 export type SimIntradia = Envelope<{ dia?: string; contas?: Record<string, ContaIntradia>; boletins?: Boletim[] }>;
-export type Vizinhas = { bolsa: SimBolsa | null; intradia: SimIntradia | null };
+export type Carteira = {
+  nome: string; ativo: string; moeda: string; situacao: string; motivo: string | null; valor_brl: number; resultado: number;
+  quantidade: number; comprou_em: string | null; preco_da_compra: number | null; preco_atual: number | null;
+  dia_do_preco: string | null; cambio_atual: number | null; custos_brl: number; minimo_brl: number | null; premissa: string;
+};
+export type SimCarteiras = Envelope<{ capital_brl?: number; inicio?: string | null; ultimo_dia?: string | null; cambio?: string; avisos?: string[]; carteiras?: Record<string, Carteira> }>;
+export type Vizinhas = { bolsa: SimBolsa | null; intradia: SimIntradia | null; carteiras: SimCarteiras | null };
 
 export const CAPITAL = 10000;
 
@@ -32,7 +38,8 @@ export function vizinhasDeLinhas(rows: Linha[]): Vizinhas {
   const m: Record<string, any> = {};
   rows.forEach(r => { if (r.chave.startsWith("sim:")) { try { m[r.chave] = JSON.parse(r.conteudo); } catch { /* linha estragada fica de fora */ } } });
   const ok = (x: any) => x && typeof x === "object" && x.relatorio && typeof x.relatorio === "object";
-  return { bolsa: ok(m["sim:bolsa"]) ? m["sim:bolsa"] : null, intradia: ok(m["sim:intradia"]) ? m["sim:intradia"] : null };
+  return { bolsa: ok(m["sim:bolsa"]) ? m["sim:bolsa"] : null, intradia: ok(m["sim:intradia"]) ? m["sim:intradia"] : null,
+    carteiras: ok(m["sim:carteiras"]) ? m["sim:carteiras"] : null };
 }
 
 // "REPROVADA no laboratório em 27/10/2026 (...)" -> "reprovada no laboratório: só observação"
