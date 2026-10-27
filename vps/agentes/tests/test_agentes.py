@@ -137,6 +137,12 @@ class Plantonista(unittest.TestCase):
         self.assertIn("BTC +10,00%", b)
         tmp.cleanup()
 
+    def test_percentual_sem_menos_zero_e_corte_na_frase(self):
+        self.assertEqual(plantonista._pct(-0.0000001), "+0,00%")
+        ia = plantonista.ler_ia("NOTICIAS: " + "Uma frase curta. " * 60)
+        self.assertTrue(ia["NOTICIAS"].endswith("curta."))
+        self.assertLessEqual(len(ia["NOTICIAS"]), 600)
+
     def test_ia_sem_formato_vira_indefinido(self):
         self.assertEqual(plantonista.ler_ia("bla")["FRASE"], "indefinido")
 

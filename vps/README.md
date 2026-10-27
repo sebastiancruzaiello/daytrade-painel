@@ -6,9 +6,9 @@ Nada aqui manda ordem, muda limite, config, calendário ou lacre. Nenhum segredo
 
 - `central/porteiro.py`: busca na central do n8n os pedidos de pausa do Claude, Codex, Beto e Alex e só roda
   `python3 -m aovivo parar`. Cron de minuto em minuto. Retomar é só com o Sebastian.
-- `agentes/`: Sentinela de notícias e Plantonista pela API do Claude (fase C). Cron diário às 01:10 UTC.
+- `agentes/`: Sentinela de notícias e Plantonista pela API do Claude (fase C). Cron diário às 01:10 de Brasília (o cron da VPS usa esse horário).
   Trava de US$ 5 por dia além do limite mensal do Console. Instalação: `bash agentes/instalar.sh`.
-- `copia/`: cópia diária (03:17 UTC) do diário, estado, relatórios e boletins para o repositório privado
+- `copia/`: cópia diária (03:17 de Brasília) do diário, estado, relatórios e boletins para o repositório privado
   `daytrade-copias`, com uma deploy key só desse repositório. Recusa enviar se achar um segredo na cópia.
   Instalação: `bash copia/instalar.sh`.
 

@@ -2,7 +2,7 @@
 # Instala os agentes de IA do DAYTRADE na VPS (fase C). Roda como claude-vps, de dentro de ~/projects/daytrade-sim:
 #   bash agentes/instalar.sh
 # Faz: venv com o SDK do Claude, testes, pede a chave da API sem mostrar na tela (chmod 600),
-# põe o cron diário (01:10 UTC) e roda uma vez para conferir. Não mexe em estado/, config, limites ou lacre.
+# põe o cron diário (01:10 no relógio da VPS, horário de Brasília) e roda uma vez para conferir. Não mexe em estado/, config, limites ou lacre.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -27,7 +27,7 @@ else
   echo "   chave guardada só nesta VPS (agentes/chave.txt, chmod 600)."
 fi
 
-echo "4/5 cron diário às 01:10 UTC (22:10 em Brasília)..."
+echo "4/5 cron diário às 01:10 de Brasília (04:10 UTC; o cron da VPS usa o horário de Brasília)..."
 LINHA='10 1 * * * cd /home/claude-vps/projects/daytrade-sim && agentes/.venv/bin/python -m agentes dia >> estado/agentes.log 2>&1'
 crontab -l | grep -v 'python -m agentes dia' > /tmp/cron.agentes || true
 echo "$LINHA" >> /tmp/cron.agentes
