@@ -14,6 +14,16 @@ Feito com Electron, React e componentes do [affectUI](https://github.com/flohoel
 A tela Robôs mostra todos os robôs, réguas e carteiras ao vivo, com filtros e a ficha de cada um. O que cada
 situação quer dizer (ativo, aguardando mercado, falha de conexão, dado velho…) está em [`docs/ESTADOS.md`](docs/ESTADOS.md).
 
+## Fábrica de estratégias
+
+A tela Fábrica mostra quem pesquisa, revisa, congela e testa estratégias, e em que etapa cada candidato está (fonte,
+hipótese, triagem, regra congelada, código, testes técnicos, teste histórico, parecer). Lê a linha `fabrica:resumo`:
+
+    {"em": "...", "etapas": ["fonte", ...] (opcional), "candidatos": [{"id", "titulo", "mercado", "etapa",
+     "situacao", "desde", "responsavel", "evidencia", "veredito"}]}
+
+Campos a mais são ignorados. Sem essa linha, a tela usa as fichas e vereditos do `lab:resumo`.
+
 ## Desenvolver
 
     npm ci
