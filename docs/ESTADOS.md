@@ -132,6 +132,8 @@ O cripto diário (MM20 BTC, MM20 ETH e Momentum) continua no salão antigo, por 
 | Guardião na cabine do motor de risco | sempre de guarda: confere cada ordem na hora em que ela nasce, não tem tarefa própria |
 | Momentum na mesa (0.1.17) | uma conta só com três moedas: um rótulo acima do grupo ("MOMENTUM · 1 conta, 3 moedas", valor e %); cada cadeira mostra a sua moeda e a variação dela no último fechamento diário |
 | "DIA — sem preço novo desde ..." (0.1.17) | quem marca uma vez por dia (cripto diário às 21h de Brasília, bolsa depois do fechamento) ainda não tem preço depois da base do dia; aparece o acumulado com % logo abaixo, em vez de um 0,00 que parece resultado |
+| Motivo acima de quem está no lazer (0.1.18) | por que está fora da mesa, vindo da VPS: sem sinal (e o número), compra recusada pelo calendário (FOMC/CPI), capital novo ou abaixo do mínimo, compra da abertura que só é lançada depois do fechamento; embaixo, o evento do dia e a próxima rodada em Brasília |
+| Tarefa acima do Maestro e dos agentes (0.1.18) | a tarefa em execução no registro de tarefas ("T-05 · título", "+N" se houver mais); "atividade não confirmada" = 6 h sem sinal, fica no posto em amarelo; "aguarda: ..." = só esperando uma condição, vai para o lazer |
 | Apagado | parado, falha de conexão ou sem telemetria; continua no lugar, não some |
 | Faixa no peito | régua ou carteira de referência (não opera) |
 | Número em verde ou vermelho sobre a cabeça | ganho ou perda do dia ou acumulado, com moeda (desde a 0.1.14, veja abaixo) |

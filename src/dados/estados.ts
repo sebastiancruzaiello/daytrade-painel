@@ -2,7 +2,7 @@
 // Este arquivo não importa nada em tempo de execução (só tipos): os testes rodam direto no Node.
 import type { Fonte } from "./formato";
 import type { Vizinhas, LinhaBolsa } from "./vizinhas";
-import type { Detalhes, DetalheRobo, EventoDetalhe, TipoEvento } from "./detalhe";
+import type { Detalhes, DetalheRobo, Espera, EventoDetalhe, TipoEvento } from "./detalhe";
 import type { Lote, RoboLote } from "./lote";
 import type { Dimensoes, ResultadoOp } from "./escritorio";
 
@@ -53,6 +53,8 @@ export type Entidade = {
   semTelemetria?: boolean;   // o cadastro espera este robô, mas a leitura não trouxe nada dele
   res?: ResultadoOp;         // ganho/perda do dia e acumulado, na moeda da conta (linha resultado:resumo, 28/10/2026)
   dim?: Dimensoes;           // mercado, saúde, atividade, posição e estágio, cada um na sua linha
+  espera?: Espera | null;    // sem posição: por que está fora da mesa e a próxima rodada (exportador, T-20261028-05)
+  sombraHoje?: string | null; // day trade: o que a regra pura fez hoje (compra 08:30, venda 11:30; −0,32%)
 };
 
 // Como está a ligação do painel com o n8n (vem do App).
@@ -391,7 +393,7 @@ function lote(e: Entrada): Entidade[] {
       parecer: r.veredito, veredito: r.veredito, custoIA: SEM_IA,
       regua: { valor: r.regua_valor, resultado: r.regua_resultado, nome: `só segurar ${alvo}` },
       alerta: alertas.join(" ") || null,
-      decisao,
+      decisao, espera: r.espera,
       linha: [
         ...(d ? [{ ...decisao!, d: d.dia || "" }] : []),
         ...r.historico.slice(-20).reverse().map(([dia, v, rg]) => ({ d: dia, tipo: "info" as const,
@@ -425,7 +427,10 @@ export function comDetalhe(x: Entidade, d: DetalheRobo | undefined): Entidade {
     aPrecoDe: d.a_preco_de, pendente: d.pendente, caixaLocal: d.caixa_local ?? null, diferenca: d.conciliacao.diferenca,
   };
   const custos = d.custos != null ? d.custos + (x.mercado !== "Cripto" && x.tipo !== "carteira" ? d.imposto ?? 0 : 0) : x.custos;
-  return { ...x, linha, decisao: decisao ? evento(decisao) : null, carteira, custos, ...marcacao(x, d) };
+  // Regra pura do day trade: o relatório só tem o começo do dia; com o dia de hoje da VPS, o número fica o de agora.
+  const sh = d.sombra_hoje, sombra = sh && sh.resultado != null && x.sombra != null ? (1 + x.sombra) * (1 + sh.resultado) - 1 : x.sombra;
+  return { ...x, linha, decisao: decisao ? evento(decisao) : null, carteira, custos, ...marcacao(x, d),
+    espera: d.espera ?? x.espera ?? null, sombra, sombraHoje: sh ? sh.txt : x.sombraHoje ?? null };
 }
 
 // Day trade: o relatório só traz o valor do começo do dia. O detalhe traz o caixa e a exposição de agora (a preço

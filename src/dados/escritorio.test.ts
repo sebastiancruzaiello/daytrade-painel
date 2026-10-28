@@ -4,7 +4,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   faseAgora, escritorioAgora, comSinal, rotuloFinanceiro, reconciliarInventario, atividade, prontidaoDeLinhas,
-  resultadoDeLinhas, type Segmento, type Prontidao, type ResultadoOp, type OperadorInv,
+  resultadoDeLinhas, horaCurta, linhaEspera, tarefasDeLinhas, agentesDeLinhas, atividadeTarefas,
+  type Segmento, type Prontidao, type ResultadoOp, type OperadorInv,
 } from "./escritorio.ts";
 
 const B3_ETF: Segmento = {
@@ -153,4 +154,43 @@ test("linhas novas estragadas ou ausentes não quebram o painel", () => {
   assert.equal(prontidaoDeLinhas([]), null);
   assert.equal(prontidaoDeLinhas([{ chave: "prontidao:resumo", conteudo: "{", atualizado: "" }]), null);
   assert.equal(resultadoDeLinhas([{ chave: "resultado:resumo", conteudo: "{}", atualizado: "" }]), null);
+});
+
+test("lazer: hora da próxima rodada em Brasília e evento do calendário na segunda linha", () => {
+  const agora = t("2026-10-28T13:42:00Z");
+  assert.equal(horaCurta("2026-10-29T00:02:00+00:00", agora), "21:02");
+  assert.equal(horaCurta("2026-11-02T00:02:00+00:00", agora), "01/11 21:02");
+  assert.equal(horaCurta(null, agora), "");
+  assert.equal(linhaEspera({ curto: "sem sinal · abaixo do teto", proxima: "2026-10-28T14:00:00+00:00", evento: "FOMC hoje: compra barrada" }, agora),
+    "FOMC hoje · próx. 11:00");
+  // o evento já está no motivo: não repete
+  assert.equal(linhaEspera({ curto: "compra recusada · FOMC", proxima: "2026-10-28T14:00:00+00:00", evento: "FOMC hoje: compra barrada" }, agora), "próx. 11:00");
+  assert.equal(linhaEspera({ curto: "conta pausada pelo motor", proxima: null, evento: null }, agora), "");
+});
+
+test("tarefas: em execução fica no posto com a tarefa; não confirmada fica com aviso; só aguardando vai para o lazer", () => {
+  const linha = (por_membro: unknown) => [{ chave: "tarefas:resumo", atualizado: "", conteudo: JSON.stringify({ em: "2026-10-28T17:00:00Z", registro_em: "2026-10-28T16:59:00Z", por_membro }) }];
+  const q = tarefasDeLinhas(linha({
+    maestro: { em_execucao: [
+      { id: "T-20261028-05", titulo: "Motivo concreto de cada robô no lazer", situacao: "em execução", desde: "2026-10-28T16:55:00Z" },
+      { id: "T-20261028-02", titulo: "Registro de tarefas", situacao: "atividade não confirmada", desde: "2026-10-28T08:00:00Z" }],
+      aguardando: [{ id: "T-20261028-13", titulo: "Cartão único", condicao: "resposta do Sebastian" }], planejadas: 9, concluidas: 2 },
+    revisor: { em_execucao: [{ id: "T-20261028-08", titulo: "Revisão", situacao: "atividade não confirmada", desde: "2026-10-28T01:00:00Z" }], aguardando: [] },
+    pesquisador: { em_execucao: [], aguardando: [{ id: "T-20261028-14", titulo: "Hipótese", condicao: "decisão do Sebastian" }] },
+    vazio: { em_execucao: [], aguardando: [] },
+  }))!;
+  assert.equal(q.registro_em, "2026-10-28T16:59:00Z");
+  const m = atividadeTarefas(q.por_membro.maestro)!;
+  assert.equal(m.posto, "trabalhando");
+  assert.equal(m.txt, "T-05 · Motivo concreto de cada… +1");
+  assert.match(m.detalhe, /T-20261028-13 \(resposta do Sebastian\)/);
+  const r = atividadeTarefas(q.por_membro.revisor)!;
+  assert.deepEqual([r.txt, r.posto, r.tom], ["atividade não confirmada", "alerta", "aviso"]);
+  const p = atividadeTarefas(q.por_membro.pesquisador)!;
+  assert.deepEqual([p.txt, p.posto], ["aguarda: decisão do Sebastian", "folga"]);
+  assert.equal(atividadeTarefas(q.por_membro.vazio), null);  // sem tarefa no registro: vale a prova de atividade
+  assert.equal(atividadeTarefas(undefined), null);
+  // sem agentes:resumo, o quadro de tarefas ainda chega
+  assert.ok(agentesDeLinhas(linha({}))?.tarefas);
+  assert.equal(tarefasDeLinhas([{ chave: "tarefas:resumo", conteudo: "{", atualizado: "" }]), null);
 });

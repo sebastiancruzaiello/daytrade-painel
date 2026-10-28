@@ -6,7 +6,7 @@ import {
   ESTADOS, ESTAGIO_LOTE, CAMPOS, TODOS, filtrar, filtroVazio, opcoes, contarEstados,
   type Entidade, type Estado, type Filtro, type Evento,
 } from "../dados/estados";
-import { rotuloFinanceiro, comSinal, dinheiro as dinheiroMoeda, type Prontidao, type Periodo } from "../dados/escritorio";
+import { rotuloFinanceiro, comSinal, dinheiro as dinheiroMoeda, horaCurta, type Prontidao, type Periodo } from "../dados/escritorio";
 
 // Todos os robôs, réguas e carteiras ao vivo, com filtros e a ficha completa de cada um. Só olha.
 const ROTULO_CAMPO: Record<typeof CAMPOS[number], string> = {
@@ -109,6 +109,7 @@ function Cartao({ x, ativo, abrir, periodo }: { x: Entidade; ativo: boolean; abr
       {x.valorNota && <p className="muted pequeno">{x.valorNota}</p>}
       <p className="robo-motivo">{x.motivo}</p>
       {x.decisao && <p className="robo-decisao"><b>{TIPOS[x.decisao.tipo!].rotulo}</b> {x.decisao.txt.replace(/^não operou: /, "")}</p>}
+      {x.espera && <p className="robo-decisao"><b>fora da mesa</b> {x.espera.curto}{x.espera.proxima ? ` · próxima rodada ${horaCurta(x.espera.proxima, Date.now())}` : ""}</p>}
       {x.regua && x.resultado != null && x.regua.resultado != null && (
         <p className="robo-regua">régua ({x.regua.nome}): <span className={tomRes(x.regua.resultado)}>{pct(x.regua.resultado)}</span>{" "}
           <small className="muted">· {Math.abs(x.resultado - x.regua.resultado) < 0.0005 ? "igual à régua" : `${x.resultado > x.regua.resultado ? "acima" : "abaixo"} da régua por ${pct(Math.abs(x.resultado - x.regua.resultado)).replace(/^[+−-]/, "")}`}</small></p>
@@ -136,7 +137,7 @@ export function DetalheEntidade({ x, fechar }: { x: Entidade; fechar: () => void
     ["Capital inicial", dinheiro(x.capital, x.moeda)],
     ["Valor agora", (x.patrimonio != null ? dinheiro(x.patrimonio, x.moeda) : "—") + (x.valorNota ? ` (${x.valorNota})` : "")],
     ["Resultado", x.resultado != null ? pct(x.resultado) : "—", tomRes(x.resultado)],
-    ...(x.sombra != null ? [["Regra pura (sem freios)", pct(x.sombra)] as [string, string]] : []),
+    ...(x.sombra != null ? [["Regra pura (sem freios)", pct(x.sombra) + (x.sombraHoje ? ` · ${x.sombraHoje.replace(/^regra pura hoje \(sem o motor de risco\): /, "hoje: ")}` : "")] as [string, string]] : []),
     ...(x.regua ? [[`Régua: ${x.regua.nome}`, (x.regua.valor != null ? dinheiro(x.regua.valor, x.moeda) + " · " : "") + (x.regua.resultado != null ? pct(x.regua.resultado) : "—"), tomRes(x.regua.resultado)] as [string, string, string]] : []),
     ["Maior queda observada", x.quedaMax != null ? pct(x.quedaMax) : "—"],
     ["Custos pagos", x.custos != null ? dinheiro(x.custos, x.moeda === "BRL" ? "BRL" : x.moeda) : "não informado pela simulação"],
@@ -181,6 +182,17 @@ export function DetalheEntidade({ x, fechar }: { x: Entidade; fechar: () => void
           <span className="tipo-evento">{TIPOS[x.decisao.tipo!].rotulo}</span>
           <p>{semRotulo(x.decisao.txt)}</p>
           <p className="muted pequeno">Última decisão do robô, {quando(x.decisao)}.</p>
+        </div>
+      )}
+      {x.espera && (
+        <div className="detalhe-decisao tipo-nao">
+          <span className="tipo-evento">fora da mesa</span>
+          <p>{x.espera.txt}</p>
+          <p className="muted pequeno">
+            {x.espera.evento ? x.espera.evento + ". " : ""}
+            {x.espera.proxima ? `Próxima rodada que decide: ${horaCurta(x.espera.proxima, Date.now())} (Brasília).` : "Sem rodada prevista enquanto o bloqueio durar."}
+            {" "}Sem posição, o robô fica na área de lazer do escritório; volta para a mesa quando comprar.
+          </p>
         </div>
       )}
       {x.carteira && <Dinheiro x={x} />}

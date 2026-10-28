@@ -82,6 +82,17 @@ no acumulado). O Momentum, que é uma conta só com três moedas, ganha um rótu
 cadeira, a moeda e a variação dela no último fechamento diário. Quem só marca uma vez por dia mostra "DIA — sem preço
 novo desde ..." e o acumulado, em vez de um 0,00 que parece resultado.
 
+Desde a 0.1.18 cada robô na área de lazer diz **por que está fora da mesa**, com o motivo concreto que a VPS manda
+(campo `espera` do `robos:detalhe` e do `lote:resumo`): "sem sinal · abaixo do teto", "compra recusada · FOMC",
+"sem sinal · abaixo da MM20", "capital novo · compra 19:50", "compra da abertura de 28/10" (a bolsa compra pelo
+preço de abertura, mas só lança a posição depois do fechamento; aí vai para a mesa). Embaixo, o evento do calendário
+de hoje e a **hora da próxima rodada** que decide, em Brasília ("FOMC hoje · próx. 11:00"). A frase inteira fica no
+cartão e na ficha do robô (aba Robôs). O day trade mostra também o que a **regra pura** fez hoje (antes ficava
++0,00% até a meia-noite UTC). E o **Maestro** (o Claude que coordena a equipe) entrou no escritório: acima da cabeça
+dele, e de cada agente, a tarefa em execução no registro de tarefas (linha `tarefas:resumo`, `equipe/tarefas` no
+daytrade-lab); "atividade não confirmada" (6 h sem sinal) fica no posto em amarelo; quem só espera uma condição (um
+sim do Sebastian) vai para o lazer dizendo o quê.
+
 ## Desenvolver
 
     npm ci

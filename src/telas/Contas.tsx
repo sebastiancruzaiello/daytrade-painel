@@ -54,7 +54,7 @@ export function Contas({ dias, di, pararTeste, base, ex, viz, entidades }: { dia
         })}
       </div>
       <Carteiras viz={viz} />
-      <Vizinhas viz={viz} />
+      <Vizinhas viz={viz} entidades={entidades} />
       <p className="nota">Cada conta de cripto começa com 10.000 USDT de mentira e é comparada com quem só comprasse e segurasse. SPY e BOVA11 mostram quanto 10.000 virariam só segurando o fundo, com dividendos: é a régua que os robôs de ações (os da bolsa e os do lote, na aba Robôs) precisam vencer. Cada robô tem o seu dinheiro; os resultados nunca se somam numa conta só.</p>
     </div>
   );
@@ -163,7 +163,7 @@ function Carteiras({ viz }: { viz: Viz }) {
 const MERCADO = { eua: ["EUA", "#e8a25b"], b3: ["B3", "#5fcf8f"] } as Record<string, [string, string]>;
 
 // Bolsa (EUA e B3) e day trade em cripto, como a VPS mandou. Sempre o dia de hoje: não acompanha a régua do ensaio.
-function Vizinhas({ viz }: { viz: Viz }) {
+function Vizinhas({ viz, entidades }: { viz: Viz; entidades: Entidade[] }) {
   const { bolsa, intradia } = viz;
   if (!bolsa && !intradia) return (
     <p className="nota">A bolsa (EUA e B3) e o day trade em cripto aparecem aqui assim que a VPS mandar o primeiro resumo deles.</p>
@@ -197,6 +197,13 @@ function Vizinhas({ viz }: { viz: Viz }) {
   }
   if (intradia) {
     const r = intradia.relatorio, ult = (r.boletins || []).slice(-1)[0];
+    // A regra pura só fecha o dia à meia-noite UTC; com o dia corrente da VPS (sombra_hoje), mostra o de agora e o
+    // que ela fez hoje, em vez de "+0,00%" o dia inteiro.
+    const regraPura = (k: string, inicio: number) => {
+      const e = entidades.find(x => x.id === "intradia:" + k);
+      if (!e || e.sombra == null || !e.sombraHoje) return pct(inicio / CAPITAL - 1);
+      return `${pct(e.sombra)} · ${e.sombraHoje.replace(/^regra pura hoje \(sem o motor de risco\): /, "hoje: ")}`;
+    };
     Object.entries(r.contas || {}).forEach(([k, c]) => {
       const ret = c.inicio_do_dia / CAPITAL - 1, dia = ult?.contas?.[k];
       const changes: MetricChange[] = [
@@ -204,7 +211,7 @@ function Vizinhas({ viz }: { viz: Viz }) {
         { label: "Operações hoje", change: `${c.operacoes_hoje.length}`, tone: "neutral" },
         { label: "Último dia fechado", change: dia?.contas?.resultado_dia != null ? `${pct(dia.contas.resultado_dia)} em ${dBR(ult!.dia)}` : "ainda nenhum", tone: "neutral" },
         { label: "Situação", change: freio(c.situacao, intradia.botao_parar), tone: c.situacao === "ativa" && !intradia.botao_parar ? "neutral" : "bad" },
-        { label: "Regra pura (sem freios)", change: pct(c.sombra_inicio_do_dia / CAPITAL - 1), tone: "neutral" },
+        { label: "Regra pura (sem freios)", change: regraPura(k, c.sombra_inicio_do_dia), tone: "neutral" },
       ];
       const ver = veredito(c.veredito);
       if (ver) changes.push({ label: "Laboratório", change: ver, tone: "bad" });
