@@ -43,6 +43,13 @@ Desde a 0.1.11 a tela Robôs também mostra os 9 robôs do lote de observação,
 aparece com o veredito, a régua na mesma moeda, a última decisão e o quadro Dinheiro. Os resultados nunca se somam.
 Em `docs/ESTADOS.md` está como cada situação do lote vira situação do painel.
 
+## Escritório gerado da lista
+
+Desde a 0.1.13 o Pregão tem a **ala dos robôs**: cada robô, régua e carteira da tela Robôs ganha um lugar no
+escritório, sem cadeira escrita à mão. Quem a VPS diz que existe e não chegou na leitura aparece como "sem
+telemetria", e a coluna da direita mostra esperados, recebidos e desenhados. O rodapé mostra a versão do programa,
+de onde vêm os números e a hora da última leitura e do último envio da VPS. Detalhes em `docs/ESTADOS.md`.
+
 ## Desenvolver
 
     npm ci

@@ -4,12 +4,15 @@
 import { KS, NOME, COR, C, dayIdx, fmt, pct, dBR } from "../dados/formato";
 import { segurar, pregao, idxAte } from "../dados/mercados";
 import { criarCamera } from "./camera";
+import { planta, ALA } from "../dados/elenco";
+import { ESTADOS } from "../dados/estados";
 
 const FONT = '"Chakra Petch", "Segoe UI", sans-serif';
-// O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22.
+// O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22; a ala dos robôs, gerada da lista de
+// entidades (src/dados/elenco.ts), de x 22 a 34.
 const CURTO = { "mm20-btc": "MM20 BTC", "mm20-eth": "MM20 ETH", "momentum": "Momentum" };
 const AZUL = "#8fb0ff"; // títulos da ala de ações e dos grupos por mercado
-const W = 1140, H = 760, TW = 64, TH = 32, N = 12, NX = 22, OX = 420, OY = 200;
+const W = 1550, H = 960, TW = 64, TH = 32, N = 12, NX = 34, NA = 22, OX = 420, OY = 200;
 const P = (x, y, z = 0) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2 - z];
 
 const SEATS = {
@@ -22,10 +25,11 @@ const OUT = [-0.8, 10.25];
 const GUARD = { x: 10.3, y: 2.4 };
 
 export type Cena = { mostrar: (s: EstadoCena) => void; destruir: () => void; mais: () => void; menos: () => void; inicio: () => void; selecionar: (id: string | null) => void };
-export type EstadoCena = { D: any; dias: any[]; di: number; pararTeste: boolean; vivo: any | null; aoVivo: boolean; ex: any };
+export type EstadoCena = { D: any; dias: any[]; di: number; pararTeste: boolean; vivo: any | null; aoVivo: boolean; ex: any; entidades: any[] };
 
 // Ids das pessoas: "robo:<conta>:<cadeira>", "staff:escrivao", "staff:guardiao", "agente:<nome>", "ref:SPY", "ref:BOVA11",
-// "robo:guardiao-dados", "robo:coletor-clima", "robo:coletor-mercados", "robo:organizador".
+// "robo:guardiao-dados", "robo:coletor-clima", "robo:coletor-mercados", "robo:organizador",
+// e "ent:<id da entidade>" para cada robô, régua ou carteira desenhado na ala gerada.
 export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, aoPessoa?: (id: string) => void): Cena {
   const g = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -38,7 +42,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   let chars = [];
   const staff = [
     { id: "staff:escrivao", nome: "Escrivão", x: 6.2, y: 1.4, cor: C.staff, label: "diário ok", anda: true },
-    { id: "agente:pesquisador", nome: "Pesquisador", x: 0.9, y: 3.4, cor: "#8fa9b3", label: "fichas · segundas" },
+    { id: "agente:pesquisador", nome: "Pesquisador", x: 0.9, y: 3.4, cor: "#8fa9b3", label: "fichas · pela fábrica" },
     { id: "agente:plantonista", nome: "Plantonista", x: 4.4, y: 2.0, cor: "#7fb8ff", label: "boletim diário" },
   ];
   let selecionado: string | null = null;
@@ -58,8 +62,8 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     poly([a, b, B, A], left); poly([b, c, Cc, B], right); poly([A, B, Cc, Dd], top);
   }
   function floor() {
-    for (let x = 0; x < NX; x++) for (let y = 0; y < N; y++) poly([P(x, y), P(x + 1, y), P(x + 1, y + 1), P(x, y + 1)], x < N ? ((x + y) % 2 ? "#222d33" : "#1e282e") : ((x + y) % 2 ? "#252a33" : "#21262e"));
-    poly([P(N, 5.9), P(NX, 5.9), P(NX, 6.1), P(N, 6.1)], "#3a3f4a");
+    for (let x = 0; x < NX; x++) for (let y = 0; y < N; y++) poly([P(x, y), P(x + 1, y), P(x + 1, y + 1), P(x, y + 1)], x < N ? ((x + y) % 2 ? "#222d33" : "#1e282e") : x < NA ? ((x + y) % 2 ? "#252a33" : "#21262e") : ((x + y) % 2 ? "#232b2a" : "#1f2626"));
+    poly([P(N, 5.9), P(NA, 5.9), P(NA, 6.1), P(N, 6.1)], "#3a3f4a");
     poly([P(0.4, 8), P(4.6, 8), P(4.6, 11.6), P(0.4, 11.6)], "#2b2a35");
   }
   function wallText(x, y, z, txt, size, color) {
@@ -79,6 +83,8 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     poly([P(0, 9.6, 96), P(0, 10.9, 96), P(0, 10.9, 104), P(0, 9.6, 104)], C.bad);
     wallText(0, 10.8, 112, "SAÍDA", 13, C.bad);
     backText(13.9, 150, "AÇÕES · EUA e B3", 22, AZUL);
+    backText(23.2, 150, "ALA DOS ROBÔS", 22, C.good);
+    backText(23.2, 132, S && !S.aoVivo ? "estado de agora (o ensaio é só do salão de cripto)" : "gerada da lista: quem existe aparece aqui", 10, C.muted);
   }
   // Texto pintado na parede do fundo (a que corre ao longo de x).
   function backText(x, z, txt, size, color) {
@@ -104,10 +110,11 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   const nome = (id, sx, sy, txt, col) => nomes.push({ id, sx, sy, txt, col });
   // Placas das áreas (ALA EUA, ALA B3, SALA DE APOIO): no chão, mas desenhadas junto com os nomes para nada cobrir.
   const PLACAS = [[21.3, 0.55, "SALA DE APOIO", C.muted], [12.9, 5.6, "ALA EUA ↑", AZUL], [12.9, 6.4, "ALA B3 ↓", AZUL]];
+  let placasAla = [];
   function drawNomes() {
     const usados = [], bate = (r) => usados.some(u => r.x < u.x + u.w && u.x < r.x + r.w && r.y < u.y + u.h && u.y < r.y + r.h);
     g.textAlign = "center";
-    PLACAS.forEach(([x, y, txt, col]) => {
+    [...PLACAS, ...placasAla].forEach(([x, y, txt, col]) => {
       const [px, py] = P(x, y); g.font = `700 9.5px ${FONT}`; const w = g.measureText(txt).width + 10;
       g.fillStyle = "rgba(10,14,16,.6)"; roundRect(px - w / 2, py - 8, w, 14, 3); g.fill();
       g.fillStyle = col; g.fillText(txt, px, py + 2); usados.push({ x: px - w / 2, y: py - 8, w, h: 14 });
@@ -397,6 +404,48 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     } }));
   }
 
+  /* ---------- ala dos robôs: uma pessoa por entidade da lista; nenhuma cadeira escrita à mão por robô ---------- */
+  const COR_MERCADO = { Cripto: "#4fc1c9", EUA: "#e8a25b", B3: "#5fcf8f" };
+  const CURTO_ESTADO = { "aguardando-mercado": "fechado", "aguardando-dado": "sem dado", "falha-conexao": "falha", "dado-velho": "dado velho", "pausado": "pausa", "parado": "parado", "sem-capital": "sem capital" };
+  const TOM_COR = { ok: C.good, espera: "#8fb0ff", aviso: C.warn, ruim: C.bad };
+  let plantaAtual = planta([]), entPlanta = null;
+  function plantaDe(lista) { if (lista !== entPlanta) { entPlanta = lista; plantaAtual = planta(lista || []); } return plantaAtual; }
+  const curtoNome = (t) => t.length > 15 ? t.slice(0, 14) + "…" : t;
+  function tagP(x, y, txt, col) { g.font = `700 9px ${FONT}`; const w = g.measureText(txt).width + 8; g.fillStyle = "rgba(10,14,16,.85)"; roundRect(x - w / 2, y - 10, w, 13, 3); g.fill(); g.fillStyle = col; g.textAlign = "center"; g.fillText(txt, x, y); g.textAlign = "left"; }
+  function drawEntidade(x, l, t, n) {
+    const id = "ent:" + x.id, [sx, sy] = P(l.x, l.y);
+    anel(id, sx, sy);
+    const est = ESTADOS[x.estado] || ESTADOS["aguardando-dado"];
+    // Sentado = comprado e rodando; em pé = em caixa ou esperando; apagado = parado, sem conexão ou sem telemetria.
+    const sentado = x.estado === "ativo" && x.posicoes && x.posicoes.length > 0;
+    const apagado = !!x.semTelemetria || x.estado === "parado" || x.estado === "falha-conexao";
+    const cor = COR_MERCADO[x.mercado] || C.accent;
+    const by = figura(sx, sy, x.tipo === "robo" ? cor : "#8a949c", { sentado, apagado, t, fase: n * 0.7 });
+    if (x.tipo !== "robo") { g.fillStyle = cor; g.fillRect(sx - 9, by - 13, 18, 3); }  // régua ou carteira: faixa na cor do mercado
+    const curto = x.semTelemetria ? "sem dado" : CURTO_ESTADO[x.estado];
+    const r = x.resultado;
+    // Rodando: o resultado em verde ou vermelho. Fora disso: a situação, na cor dela (o resultado fica na ficha).
+    if (curto) tagP(sx, by - 42, curto, TOM_COR[est.tom]);
+    else if (r != null) tagP(sx, by - 42, pct(r), r > 0 ? C.good : r < 0 ? C.bad : C.muted);
+    nome(id, sx, sy, curtoNome(x.nome), x.tipo === "robo" ? cor : "#b9c2c8");
+  }
+  // Desenhada depois do resto (fica à direita e na frente): por fileira, primeiro a mesa, depois quem senta nela.
+  function alaRobos(t) {
+    const lista = S.entidades || [], pl = plantaDe(lista), porId = new Map(lista.map(x => [x.id, x]));
+    // Nome da faixa na ponta direita da primeira mesa, onde não há ninguém sentado.
+    placasAla = pl.faixas.map(fx => [ALA.x1 + 0.2, fx.fileiras[0].y - 0.7, `${fx.nome.toUpperCase()} · ${fx.fileiras.reduce((a, f) => a + f.n, 0)}`, COR_MERCADO[fx.nome] || AZUL]);
+    if (pl.foraDaAla.length) placasAla.push([ALA.x0 + 5.3, ALA.y1 - 0.1, `+${pl.foraDaAla.length} sem lugar: veja a aba Robôs`, C.warn]);
+    if (!pl.lugares.length) placasAla.push([ALA.x0 + 5.3, 5.5, S.aoVivo ? "nenhum robô chegou na leitura" : "liga o ao vivo para ver os robôs", C.muted]);
+    box(22.1, 0, 0.3, 3.6, 46, "#2c3940", "#202a30", "#26323a");
+    box(22.1, 8.4, 0.3, 3.6, 46, "#2c3940", "#202a30", "#26323a");
+    const fileiras = [];
+    pl.faixas.forEach(fx => fx.fileiras.forEach(fl => fileiras.push({ y: fl.y, cor: COR_MERCADO[fx.nome] || C.accent })));
+    fileiras.forEach(fl => {
+      drawDesk(ALA.x0 + 0.05, fl.y - 1.05, ALA.x1 - ALA.x0 - 0.1, "", fl.cor);
+      pl.lugares.filter(l => l.y >= fl.y - 1e-6 && l.y < fl.y + 0.5).forEach((l, n) => { const x = porId.get(l.id); if (x) drawEntidade(x, l, t, n); });
+    });
+  }
+
   function frame(t) {
     raf = requestAnimationFrame(frame);
     if (!S) return;
@@ -425,6 +474,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     alaAcoes(objs, t);
     chars.forEach(c => objs.push({ k: c.x + c.y + 0.3, f: () => drawChar(c, t) }));
     objs.sort((a, b) => a.k - b.k).forEach(o => o.f());
+    alaRobos(t);
     drawNomes();
     KS.forEach((k, ki) => {
       if (d.st[ki] === "parada" || S.pararTeste) {
@@ -439,6 +489,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     { p: P(10.4, 2.4, 40), zoom: 2.6 }, { p: P(2.4, 9.8, 20), zoom: 2.4 }, { p: P(0.9, 3.4, 40), zoom: 2.8 },
     { p: P(14.5, 2.9, 40), zoom: 2.6 }, { p: P(18.6, 2.9, 40), zoom: 2.6 }, { p: P(14.5, 8.3, 40), zoom: 2.6 }, { p: P(18.6, 8.3, 40), zoom: 2.6 },
     { p: P(17.0, 0.05, 80), zoom: 2.1 }, { p: P(20.9, 6.0, 30), zoom: 2.0 },
+    { p: P(28.3, 2.6, 30), zoom: 2.0 }, { p: P(28.3, 6.0, 30), zoom: 2.0 }, { p: P(28.3, 9.4, 30), zoom: 2.0 },
   ].map(a => ({ x: a.p[0], y: a.p[1], raio: 110, zoom: a.zoom }));
   // Clique (ou cursor por cima): acha a pessoa mais próxima do ponto, olhando o corpo inteiro (pés até a cabeça).
   function tocar(x, y, soOlhar) {

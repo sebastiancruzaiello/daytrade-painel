@@ -179,3 +179,39 @@ test("carteira com capital próprio: a Brasil de R$ 400 usa o dela, as outras o 
   assert.equal(capitalCarteira({}, {}), 100);
   assert.equal(capitalCarteira({ capital_brl: 100 }, { capital_brl: 400 }), 400);
 });
+
+test("dado velho do day trade se mede pela hora do envio: envio de 35 min atrás com relatório em dia não é alarme", () => {
+  const emDia = intradia(); emDia.gerado_em = ha(35); emDia.relatorio_em = ha(36);
+  const d = achar(entrada({ viz: { bolsa: null, intradia: emDia, carteiras: null } as unknown as Vizinhas }), "intradia:ruido-btc");
+  assert.equal(d.estado, "ativo", d.motivo);
+  // relatório que já estava parado quando a VPS montou o envio continua acusado
+  const parado = intradia(); parado.gerado_em = ha(35); parado.relatorio_em = ha(35 + 25);
+  const p = achar(entrada({ viz: { bolsa: null, intradia: parado, carteiras: null } as unknown as Vizinhas }), "intradia:ruido-btc");
+  assert.equal(p.estado, "dado-velho");
+  // envio parado vence tudo
+  const mudo = intradia(); mudo.gerado_em = ha(90); mudo.relatorio_em = ha(90);
+  assert.match(achar(entrada({ viz: { bolsa: null, intradia: mudo, carteiras: null } as unknown as Vizinhas }), "intradia:ruido-btc").motivo, /não manda resumo/);
+});
+
+test("day trade: valor atual é caixa + posição a preço da última checagem; sem preço, não inventa", () => {
+  const det = (exposicao: number | null, quantidades: Record<string, number>) => ({ em: ha(3), erros: [], robos: { "intradia:ruido-btc": {
+    moeda: "USDT", caixa: 196.5, reservado: 0, exposicao, a_preco_de: ha(5), custos: 9.8, operacoes: 1, pendente: null, quantidades,
+    conciliacao: { fecha: true, nota: "ok" }, linha: [] } } });
+  const sem = achar(entrada(), "intradia:ruido-btc");
+  assert.equal(sem.patrimonio, 9900);
+  assert.match(sem.valorNota!, /começo do dia/);
+  const com = achar(entrada({ detalhe: det(9750, { BTCUSDT: 0.108 }) }), "intradia:ruido-btc");
+  assert.equal(com.patrimonio, 196.5 + 9750);
+  assert.ok(Math.abs(com.resultado! - ((196.5 + 9750) / 10000 - 1)) < 1e-12);
+  assert.deepEqual(com.posicoes, ["0,108 BTC"]);
+  assert.match(com.valorNota!, /a preço de/);
+  assert.equal(com.estado, "ativo", "o detalhe não muda a situação");
+  const semPreco = achar(entrada({ detalhe: det(null, { BTCUSDT: 0.108 }) }), "intradia:ruido-btc");
+  assert.equal(semPreco.patrimonio, 9900);
+  assert.match(semPreco.valorNota!, /sem preço atual/);
+  // compra, preço sobe, venda: o valor acompanha e, todo em caixa, é o próprio caixa
+  const vendido = achar(entrada({ detalhe: det(0, {}) }), "intradia:ruido-btc");
+  assert.equal(vendido.patrimonio, 196.5);
+  assert.deepEqual(vendido.posicoes, []);
+  assert.match(vendido.valorNota!, /todo em caixa/);
+});

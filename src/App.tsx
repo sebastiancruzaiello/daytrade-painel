@@ -12,6 +12,8 @@ import { fabricaDeLinhas, fabricaDoLab, type Fabrica as QuadroFabrica } from "./
 import { montarEntidades, type Conexao } from "./dados/estados";
 import { detalheDeLinhas, type Detalhes } from "./dados/detalhe";
 import { loteDeLinhas, type Lote } from "./dados/lote";
+import { elencoDeLinhas, reconciliar, type Elenco } from "./dados/elenco";
+import { version as VERSAO } from "../package.json";
 import { Contas } from "./telas/Contas";
 import { Diario } from "./telas/Diario";
 import { Ajustes } from "./telas/Ajustes";
@@ -47,6 +49,7 @@ export function App() {
   const [fab, setFab] = useState<QuadroFabrica | null>(null);
   const [detalhe, setDetalhe] = useState<Detalhes | null>(null);
   const [lote, setLote] = useState<Lote | null>(null);
+  const [elenco, setElenco] = useState<Elenco | null>(null);
   // Relógio de minuto em minuto, para "dado velho" e "aguardando mercado" mudarem sozinhos.
   const [agora, setAgora] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 60000); return () => clearInterval(t); }, []);
@@ -71,6 +74,7 @@ export function App() {
     setFab(fabricaDeLinhas(r.linhas));
     setDetalhe(detalheDeLinhas(r.linhas));
     setLote(loteDeLinhas(r.linhas));
+    setElenco(elencoDeLinhas(r.linhas));
     setAgora(Date.now());
     const v = deLinhas(r.linhas);
     // Tabela ainda vazia: a VPS não mandou o primeiro resumo.
@@ -107,10 +111,14 @@ export function App() {
 
   const conexao: Conexao = info.estado === "erro" ? { estado: "erro", msg: info.msg, ultimaOk }
     : info.estado === "ok" ? { estado: "ok", lidoEm: info.lidoEm } : { estado: info.estado };
-  const entidades = useMemo(() => montarEntidades({
+  // O cadastro da VPS (elenco:esperado) diz quem deveria aparecer; quem não veio na leitura entra como "sem dado".
+  const { lista: entidades, conta: contaElenco } = useMemo(() => reconciliar(montarEntidades({
     vivo, viz, agora, conexao, detalhe, lote,
     pregao: { EUA: ex.aoVivo ? pregao(ex.spy, agora) : null, B3: ex.aoVivo ? pregao(ex.bova, agora) : null },
-  }), [vivo, viz, agora, info, ultimaOk, ex, detalhe, lote]); // eslint-disable-line react-hooks/exhaustive-deps
+  }), elenco, conexao.estado === "erro"
+    ? `Sem telemetria: a última leitura do n8n falhou (${conexao.msg}). O cadastro da VPS diz que este robô existe.`
+    : "Sem telemetria: o cadastro da VPS diz que este robô existe, mas a última leitura não trouxe nada dele. Pode ser a simulação parada ou o envio dela falhando."),
+  [vivo, viz, agora, info, ultimaOk, ex, detalhe, lote, elenco]); // eslint-disable-line react-hooks/exhaustive-deps
   const quadro = useMemo(() => fab || fabricaDoLab(ex.lab), [fab, ex]);
   const alertas = entidades.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado").length;
 
@@ -161,17 +169,18 @@ export function App() {
             fonte={fonte} di={diSeguro} setDi={i => { setTocando(false); setDi(i); }}
             tocando={tocando} setTocando={setTocando} passo={passo} setPasso={setPasso}
             base={base} setBase={setBase} temVivo={!!vivo} pararTeste={pararTeste}
-            info={info} vivo={vivo} ex={ex} entidades={entidades} verRobos={() => setAba("robos")}
+            info={info} vivo={vivo} ex={ex} entidades={entidades} contaElenco={contaElenco} verRobos={() => setAba("robos")}
           />
         )}
         {aba === "robos" && <Robos lista={entidades} aoVivo={base === "aovivo"} avisoLote={lote ? (lote.aviso_geral || "Os robôs do lote são observação.") : null} />}
         {aba === "fabrica" && <Fabrica f={quadro} />}
-        {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} viz={viz} />}
+        {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} viz={viz} entidades={entidades} />}
         {aba === "diario" && <Diario dias={dias} di={diSeguro} />}
         {aba === "ajustes" && <Ajustes info={info} onSalvo={lerVivo} atualizacao={atualizacao} />}
       </main>
 
       <footer className="rodape">
+        <span className="rodape-versao">{origemTexto(info, ultimaOk, vivo)}</span>
         Este programa só olha: não muda regras, limites nem estratégias, não fala com corretora e não tem IA nas decisões.
         Componentes visuais: affectUI (MIT).
       </footer>
@@ -184,6 +193,14 @@ export function App() {
       />
     </div>
   );
+}
+
+// Versão, de onde vêm os números e de quando: para saber sempre qual tela e qual dado se está vendo (achado C).
+function origemTexto(info: InfoVivo, ultimaOk: string | null, vivo: Fonte | null) {
+  const onde = window.daytrade ? "programa do PC, ao vivo pelo n8n (lê de 10 em 10 minutos)" : "prévia no navegador, sem ao vivo";
+  const leu = info.estado === "ok" ? `última leitura ${hora(info.lidoEm)}` : ultimaOk ? `última leitura boa ${hora(ultimaOk)}` : "nenhuma leitura ainda";
+  const envio = vivo?.status?.gerado_em ? ` · último envio da VPS ${hora(vivo.status.gerado_em)}` : "";
+  return `Versão ${VERSAO} · ${onde} · ${leu}${envio}. `;
 }
 
 function contarDiario(dias: Fonte["dias"], di: number) {

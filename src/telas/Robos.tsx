@@ -77,7 +77,7 @@ export function Robos({ lista, aoVivo, avisoLote }: { lista: Entidade[]; aoVivo:
         </details>
       </section>
 
-      {sel && <Detalhe x={sel} fechar={() => setAberto(null)} />}
+      {sel && <DetalheEntidade x={sel} fechar={() => setAberto(null)} />}
     </div>
   );
 }
@@ -98,8 +98,9 @@ function Cartao({ x, ativo, abrir }: { x: Entidade; ativo: boolean; abrir: () =>
       </header>
       <p className="robo-tags">{x.mercado} · {x.estrategia} · {x.horizonte} · {x.estagio}</p>
       <p className="robo-numero">
-        {x.patrimonio != null ? <>{dinheiro(x.patrimonio, x.moeda)} <small className={tomRes(x.resultado)}>{x.resultado != null ? pct(x.resultado) : ""}</small></> : <small className="muted">sem número ainda</small>}
+        {x.patrimonio != null ? <>{dinheiro(x.patrimonio, x.moeda)} <small className={tomRes(x.resultado)}>{x.resultado != null ? pct(x.resultado) : ""}</small></> : <small className="muted">{x.semTelemetria ? "sem telemetria" : "sem número ainda"}</small>}
       </p>
+      {x.valorNota && <p className="muted pequeno">{x.valorNota}</p>}
       <p className="robo-motivo">{x.motivo}</p>
       {x.decisao && <p className="robo-decisao"><b>{TIPOS[x.decisao.tipo!].rotulo}</b> {x.decisao.txt.replace(/^não operou: /, "")}</p>}
       {x.regua && x.resultado != null && x.regua.resultado != null && (
@@ -113,7 +114,7 @@ function Cartao({ x, ativo, abrir }: { x: Entidade; ativo: boolean; abrir: () =>
   );
 }
 
-function Detalhe({ x, fechar }: { x: Entidade; fechar: () => void }) {
+export function DetalheEntidade({ x, fechar }: { x: Entidade; fechar: () => void }) {
   const caixa = useRef<HTMLElement>(null);
   // Cada detalhe abre do começo, com o foco no botão de fechar (no celular ele cobre a tela).
   useEffect(() => { caixa.current?.scrollTo({ top: 0 }); caixa.current?.querySelector<HTMLButtonElement>(".ficha-fechar")?.focus({ preventScroll: true }); }, [x.id]);
@@ -127,7 +128,7 @@ function Detalhe({ x, fechar }: { x: Entidade; fechar: () => void }) {
     ["Mercado e horizonte", `${x.mercado} · ${x.horizonte}`],
     ["Estágio", x.estagio],
     ["Capital inicial", dinheiro(x.capital, x.moeda)],
-    ["Valor agora", x.patrimonio != null ? dinheiro(x.patrimonio, x.moeda) : "—"],
+    ["Valor agora", (x.patrimonio != null ? dinheiro(x.patrimonio, x.moeda) : "—") + (x.valorNota ? ` (${x.valorNota})` : "")],
     ["Resultado", x.resultado != null ? pct(x.resultado) : "—", tomRes(x.resultado)],
     ...(x.sombra != null ? [["Regra pura (sem freios)", pct(x.sombra)] as [string, string]] : []),
     ...(x.regua ? [[`Régua: ${x.regua.nome}`, (x.regua.valor != null ? dinheiro(x.regua.valor, x.moeda) + " · " : "") + (x.regua.resultado != null ? pct(x.regua.resultado) : "—"), tomRes(x.regua.resultado)] as [string, string, string]] : []),

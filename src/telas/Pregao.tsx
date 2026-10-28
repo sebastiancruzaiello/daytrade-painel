@@ -10,13 +10,15 @@ import { IconePlay, IconePausa } from "./icones";
 import { Ficha } from "./Ficha";
 import { segurar, pregao, type Extras, type Mercado } from "../dados/mercados";
 import { ESTADOS, contarEstados, type Entidade, type Estado } from "../dados/estados";
+import { planta, desenhados, type Conta } from "../dados/elenco";
+import { DetalheEntidade } from "./Robos";
 
 type Props = {
   fonte: Fonte; di: number; setDi: (i: number) => void;
   tocando: boolean; setTocando: (b: boolean) => void; passo: string; setPasso: (s: string) => void;
   base: Base; setBase: (b: Base) => void; temVivo: boolean; pararTeste: boolean;
   info: InfoVivo; vivo: Fonte | null; ex: Extras;
-  entidades: Entidade[]; verRobos: () => void;
+  entidades: Entidade[]; contaElenco: Conta; verRobos: () => void;
 };
 
 export function Pregao(p: Props) {
@@ -37,16 +39,22 @@ export function Pregao(p: Props) {
     return () => cena.current?.destruir();
   }, []);
   useEffect(() => {
-    cena.current?.mostrar({ D: fonte, dias, di, pararTeste, vivo: p.vivo, aoVivo: base === "aovivo", ex: p.ex });
-  }, [fonte, dias, di, pararTeste, p.vivo, base, p.ex]);
+    cena.current?.mostrar({ D: fonte, dias, di, pararTeste, vivo: p.vivo, aoVivo: base === "aovivo", ex: p.ex, entidades: p.entidades });
+  }, [fonte, dias, di, pararTeste, p.vivo, base, p.ex, p.entidades]);
+  // Quem estava selecionado e saiu da lista: a ficha fecha.
+  const entSel = selecionado?.startsWith("ent:") ? p.entidades.find(x => x.id === selecionado.slice(4)) || null : null;
+  useEffect(() => { if (selecionado?.startsWith("ent:") && !entSel) { setSelecionado(null); cena.current?.selecionar(null); } }, [selecionado, entSel]);
 
   const fim = di >= dias.length - 1;
   const letreiro = useMemo(() => {
     const partes = KS.map((k, ki) => ({ k, nome: NOME[k], v: d.eq[ki], r: d.eq[ki] / 10000 - 1 }));
-    const emPos = d.pos.reduce((s, x, ki) => s + (ki < 2 ? (x.length ? 1 : 0) : x.length), 0);
+    // Ao vivo: todos os robôs da lista (não só os 3 do cripto diário). Ensaio: as 3 contas do cripto naquele dia.
+    const robos = p.entidades.filter(x => x.tipo === "robo" && !x.semTelemetria);
+    const emPos = base === "aovivo" ? `${robos.filter(x => x.posicoes.length).length} de ${robos.length} robôs`
+      : `${d.pos.filter(x => x.length).length} de ${KS.length} contas do cripto diário`;
     const acoes = ([["SPY", p.ex.spy], ["BOVA11", p.ex.bova]] as const).map(([t, mk]) => ({ t, s: segurar(mk, dias[0].d, d.d) }));
     return { partes, emPos, acoes };
-  }, [d, dias, p.ex]);
+  }, [d, dias, p.ex, p.entidades, base]);
 
   return (
     <div className="pregao">
@@ -72,7 +80,7 @@ export function Pregao(p: Props) {
                 ))}
                 <span><b>BTC</b> {fmt(d.px[0])} · <b>ETH</b> {fmt(d.px[1])} · </span>
                 {letreiro.acoes.map(x => x.s && <span key={x.t}><b>{x.t}</b> {fmt(x.s.preco, 2)} · </span>)}
-                <span><b>{letreiro.emPos} de 5 robôs</b> com posição aberta · </span>
+                <span><b>{letreiro.emPos}</b> com posição aberta{base === "aovivo" ? "" : " neste dia do ensaio"} · </span>
                 {d.ev && <span><b>hoje</b> {d.ev}: não abre posição · </span>}
               </span>
             ))}
@@ -80,11 +88,13 @@ export function Pregao(p: Props) {
         </div>
       </section>
         <aside className="avisos" hidden={!lateral}>
-          {selecionado
+          {entSel
+            ? <DetalheEntidade x={entSel} fechar={fecharFicha} />
+            : selecionado && !selecionado.startsWith("ent:")
             ? <Ficha id={selecionado} fonte={fonte} di={di} pararTeste={pararTeste} aoVivo={base === "aovivo"} ex={p.ex} fechar={fecharFicha} />
             : <>
                 <h2>Situação agora</h2>
-                <Situacao lista={p.entidades} ver={p.verRobos} />
+                <Situacao lista={p.entidades} conta={p.contaElenco} ver={p.verRobos} />
                 <h2>Avisos</h2>
                 <Avisos {...p} />
                 <Legenda />
@@ -194,11 +204,19 @@ function Avisos({ info, vivo, base, fonte, di }: Props) {
 }
 
 // Quantos robôs em cada situação e quem precisa de atenção, com o motivo. "Aguardando mercado" não é problema.
-function Situacao({ lista, ver }: { lista: Entidade[]; ver: () => void }) {
+function Situacao({ lista, conta, ver }: { lista: Entidade[]; conta: Conta; ver: () => void }) {
   const c = contarEstados(lista);
   const atencao = lista.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado");
+  const nDesenho = useMemo(() => desenhados(lista, planta(lista)), [lista]);
+  const semDado = lista.filter(x => x.semTelemetria).length;
   return (
     <div className="situacao">
+      <p className="conta-elenco" title="Esperados: quem o cadastro da VPS diz que existe. Recebidos: quem veio na última leitura. No escritório: quantos estão desenhados.">
+        {conta.esperados != null ? <>Esperados <b>{conta.esperados}</b> · recebidos <b className={conta.recebidos < conta.esperados ? "dn" : ""}>{conta.recebidos}</b> · </> : <>Recebidos <b>{lista.length}</b> · </>}
+        no escritório <b className={nDesenho < lista.length ? "dn" : ""}>{nDesenho}</b>
+        {conta.esperados == null && <span className="muted"> (a VPS ainda não manda o cadastro; sem ele, quem some não é notado)</span>}
+        {semDado > 0 && <span className="dn"> · {semDado} sem telemetria</span>}
+      </p>
       <div className="resumo-estados">
         {(Object.keys(ESTADOS) as Estado[]).filter(k => c[k]).map(k => (
           <span key={k} className={"chip-estado tom-" + ESTADOS[k].tom} title={ESTADOS[k].explica}><i aria-hidden="true" />{ESTADOS[k].rotulo} <b>{c[k]}</b></span>

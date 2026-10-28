@@ -3,11 +3,12 @@ import { hora, dBR } from "../dados/formato";
 import { filaPorPessoa, porEtapa, type Candidato, type Fabrica as F } from "../dados/fabrica";
 
 // Área da fábrica: quem pesquisa, revisa, congela e testa estratégias, e onde cada candidato está. Só olha.
+// Os papéis vêm do catálogo da equipe (daytrade-lab, equipe/catalogo); o andamento de verdade é a esteira abaixo.
 const EQUIPE: { nome: string; cor: string; faz: string; quando: string }[] = [
-  { nome: "Pesquisador", cor: "#8fa9b3", faz: "acha estudos e escreve as fichas", quando: "toda segunda, 9h41" },
-  { nome: "Revisor", cor: "#c9b38a", faz: "aceita, devolve ou descarta; dá o parecer", quando: "depois de cada ficha ou teste" },
+  { nome: "Pesquisador", cor: "#8fa9b3", faz: "acha estudos e escreve as fichas", quando: "quando a fila tem vaga, pela API na VPS" },
+  { nome: "Revisor", cor: "#c9b38a", faz: "aceita, devolve ou descarta; dá o parecer", quando: "depois de cada ficha, conferência ou teste" },
   { nome: "Formalizador", cor: "#a99ae0", faz: "congela e lacra a regra; escreve o código", quando: "quando uma ficha é aceita" },
-  { nome: "Claude", cor: "#7fb8ff", faz: "roda os testes e organiza a fila", quando: "quando há regra congelada" },
+  { nome: "Claude", cor: "#7fb8ff", faz: "aciona o executor, roda o teste histórico e leva os arquivos ao repositório", quando: "um candidato por vez" },
 ];
 
 export function Fabrica({ f }: { f: F }) {
@@ -59,7 +60,7 @@ export function Fabrica({ f }: { f: F }) {
           </div>
         )}
       </section>
-      <p className="nota">A fábrica só propõe e testa. Uma estratégia só vai para a simulação ao vivo com parecer aprovado e o "sim" do Sebastian; nenhuma IA decide ordens.</p>
+      <p className="nota">A fábrica só propõe e testa, sem pedir "sim" a cada etapa (delegação de 27/10/2026), com teto de US$ 15 por candidato e US$ 150 por mês. Continua precisando do "sim" do Sebastian, com data e registro: um robô novo e permanente na simulação (nível 3 do catálogo), qualquer gasto novo e qualquer mudança de risco, lacre ou limite. Nenhuma IA decide ordens.</p>
     </div>
   );
 }

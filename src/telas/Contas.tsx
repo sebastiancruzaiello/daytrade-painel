@@ -4,12 +4,20 @@ import { KS, NOME, COR, REF, fmt, pct, dBR, hora, resumoConta, type Dia } from "
 import type { Base } from "../App";
 import { IconeConta } from "./icones";
 import { segurar, type Extras } from "../dados/mercados";
-import { capitalCarteira } from "../dados/estados";
+import { capitalCarteira, type Entidade } from "../dados/estados";
 import { CAPITAL, nomeViz, veredito, type Vizinhas as Viz, type LinhaBolsa } from "../dados/vizinhas";
 
-const ACOES = [["spy", "EUA · Segurar SPY", "#e8a25b"], ["bova", "B3 · Segurar BOVA11", "#5fcf8f"]] as const;
+const ACOES = [["spy", "EUA · Segurar SPY", "#e8a25b", "EUA"], ["bova", "B3 · Segurar BOVA11", "#5fcf8f", "B3"]] as const;
 
-export function Contas({ dias, di, pararTeste, base, ex, viz }: { dias: Dia[]; di: number; pararTeste: boolean; base: Base; ex: Extras; viz: Viz }) {
+// Quantos robôs de verdade (não réguas nem carteiras) há num mercado agora, pela mesma lista da aba Robôs.
+function robosDoMercado(lista: Entidade[], mercado: string) {
+  const r = lista.filter(x => x.tipo === "robo" && x.mercado === mercado);
+  if (!r.length) return "nenhum na leitura de agora";
+  const obs = r.filter(x => /observa/i.test(x.estagio)).length;
+  return `${r.length} ${r.length === 1 ? "robô" : "robôs"}` + (obs ? `, ${obs} só observação` : "") + " (aba Robôs)";
+}
+
+export function Contas({ dias, di, pararTeste, base, ex, viz, entidades }: { dias: Dia[]; di: number; pararTeste: boolean; base: Base; ex: Extras; viz: Viz; entidades: Entidade[] }) {
   return (
     <div className="contas">
       <Curva dias={dias} di={di} ex={ex} />
@@ -30,13 +38,13 @@ export function Contas({ dias, di, pararTeste, base, ex, viz }: { dias: Dia[]; d
             </div>
           );
         })}
-        {ACOES.map(([q, titulo, cor]) => {
+        {ACOES.map(([q, titulo, cor, mercado]) => {
           const mk = ex[q], s = segurar(mk, dias[0].d, dias[di].d);
           const changes: MetricChange[] = s ? [
             { label: "Só segurar", change: `${fmt(s.valor)} ${mk.moeda} (${pct(s.ret)} desde ${dBR(dias[0].d).slice(0, 5)})`, tone: s.ret >= 0 ? "good" : "bad" },
             { label: "Preço do fundo", change: `${fmt(s.preco, 2)} em ${dBR(s.diaPreco)}`, tone: "neutral" },
             { label: "Em 12 meses", change: s.ret1a != null ? pct(s.ret1a) : "—", tone: s.ret1a == null ? "neutral" : s.ret1a >= 0 ? "good" : "bad" },
-            { label: "Robôs nesta ala", change: "nenhum ainda: o laboratório testa primeiro", tone: "neutral" },
+            { label: "Robôs neste mercado", change: robosDoMercado(entidades, mercado), tone: "neutral" },
           ] : [{ label: "Só segurar", change: "sem dados neste dia", tone: "neutral" }];
           return (
             <div key={q} style={{ ["--cor" as string]: cor }} className="conta-bloco">
@@ -47,7 +55,7 @@ export function Contas({ dias, di, pararTeste, base, ex, viz }: { dias: Dia[]; d
       </div>
       <Carteiras viz={viz} />
       <Vizinhas viz={viz} />
-      <p className="nota">Cada conta de cripto começa com 10.000 USDT de mentira e é comparada com quem só comprasse e segurasse. Para EUA e B3 ainda não há robô: SPY e BOVA11 mostram quanto 10.000 virariam só segurando o fundo, com dividendos. É a régua que as estratégias de ações terão de vencer.</p>
+      <p className="nota">Cada conta de cripto começa com 10.000 USDT de mentira e é comparada com quem só comprasse e segurasse. SPY e BOVA11 mostram quanto 10.000 virariam só segurando o fundo, com dividendos: é a régua que os robôs de ações (os da bolsa e os do lote, na aba Robôs) precisam vencer. Cada robô tem o seu dinheiro; os resultados nunca se somam numa conta só.</p>
     </div>
   );
 }

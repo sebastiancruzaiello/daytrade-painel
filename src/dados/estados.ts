@@ -48,6 +48,8 @@ export type Entidade = {
   regua?: { valor: number | null; resultado: number | null; nome: string } | null;  // "só segurar" o mesmo ativo, mesma moeda
   alerta?: string | null;    // problema que não é situação (diário mexido, caixa que não fecha): aviso vermelho no cartão
   veredito?: string | null;  // parecer do laboratório à vista no cartão (robôs de observação)
+  valorNota?: string | null; // de quando é o valor mostrado (marcação a preço de hh:mm, começo do dia, sem preço)
+  semTelemetria?: boolean;   // o cadastro espera este robô, mas a leitura não trouxe nada dele
 };
 
 // Como está a ligação do painel com o n8n (vem do App).
@@ -65,6 +67,10 @@ export type Entrada = {
 };
 
 // Prazos para "dado velho", em minutos. Cada um segue o relógio de quem grava.
+// O envio da VPS é medido contra agora; o relatório de cada simulação é medido contra a hora em que a VPS montou o
+// envio. Assim o atraso do próprio envio (de meia em meia hora) e da leitura do painel (de 10 em 10 minutos) não faz
+// uma simulação em dia parecer parada; e uma simulação parada continua acusada, porque o relatório envelhece
+// dentro do envio (auditoria de 28/10/2026, achado H).
 export const PRAZO = {
   envio: 75,              // a VPS manda o resumo ao n8n de meia em meia hora
   vigia: 120,             // o vigia do cripto roda de hora em hora
@@ -112,7 +118,8 @@ function baseConexao(c: Conexao, temDado: boolean): Base {
 
 function velho(agora: number, envio: string | null | undefined, rel: string | null | undefined, prazoRel: number, oque: string): Base {
   if (min(agora, envio) > PRAZO.envio) return { estado: "dado-velho", motivo: `A VPS não manda resumo desde ${quando(envio)}.` };
-  if (min(agora, rel) > prazoRel) return { estado: "dado-velho", motivo: `${oque} não se renova desde ${quando(rel)}.` };
+  const ref = envio ? Date.parse(envio) : agora;
+  if (min(Number.isFinite(ref) ? ref : agora, rel) > prazoRel) return { estado: "dado-velho", motivo: `${oque} não se renova desde ${quando(rel)} (envio da VPS de ${quando(envio)}).` };
   return null;
 }
 
@@ -154,7 +161,7 @@ function cripto(e: Entrada): Entidade[] {
     const b = base0
       || situacao(st?.situacao?.[k], st?.motivo?.[k], !!st?.botao_parar, st?.motivo_parar)
       || velho(e.agora, st?.gerado_em, st?.ultimo_vigia || st?.ultima_rodada, PRAZO.vigia, "O vigia de hora em hora")
-      || (min(e.agora, st?.ultima_rodada) > PRAZO.rodadaCripto ? { estado: "dado-velho" as Estado, motivo: `A rodada do dia não roda desde ${quando(st?.ultima_rodada)}.` } : null)
+      || (min(st?.gerado_em ? Date.parse(st.gerado_em) : e.agora, st?.ultima_rodada) > PRAZO.rodadaCripto ? { estado: "dado-velho" as Estado, motivo: `A rodada do dia não roda desde ${quando(st?.ultima_rodada)}.` } : null)
       || { estado: "ativo" as Estado, motivo: u && u.pos[ki].length ? `Comprado em ${u.pos[ki].join(", ")}.` : "Em caixa, esperando o sinal da regra." };
     return {
       id: "cripto:" + k, tipo: "robo", nome, mercado: "Cripto", estrategia, versao: "aovivo-v1", horizonte: "Diário", estagio: "Ao vivo simulado",
@@ -251,7 +258,9 @@ function intradia(e: Entrada): Entidade[] {
       estado: b.estado, motivo: b.motivo,
       ultima: ult ? `operação às ${ult.d.slice(11)}` : r.dia ? `dia ${dBR(r.dia)}` : null,
       proxima: "confere de meia em meia hora; vende tudo às 20h59 de Brasília",
+      // Sem o detalhe da VPS só se sabe o valor do começo do dia; com ele, comDetalhe marca pelo caixa + exposição.
       moeda: "USDT", capital: 10000, patrimonio: c.inicio_do_dia, resultado: c.inicio_do_dia / 10000 - 1, quedaMax: null,
+      valorNota: `valor do começo do dia${r.dia ? ` ${dBR(r.dia)}` : ""}, sem as operações de hoje`,
       custos: null, posicoes: [], amostra: (n => `${n} ${n === 1 ? "dia fechado" : "dias fechados"}`)((r.boletins || []).length),
       regra: REGRA.ruido + " " + FREIOS, dados: "Velas de 1 minuto públicas da Binance; preço com mais de 5 minutos é recusado.",
       parecer: parecerCurto(c.veredito), custoIA: SEM_IA, sombra: c.sombra_inicio_do_dia / 10000 - 1,
@@ -413,7 +422,23 @@ export function comDetalhe(x: Entidade, d: DetalheRobo | undefined): Entidade {
     aPrecoDe: d.a_preco_de, pendente: d.pendente, caixaLocal: d.caixa_local ?? null, diferenca: d.conciliacao.diferenca,
   };
   const custos = d.custos != null ? d.custos + (x.mercado !== "Cripto" && x.tipo !== "carteira" ? d.imposto ?? 0 : 0) : x.custos;
-  return { ...x, linha, decisao: decisao ? evento(decisao) : null, carteira, custos };
+  return { ...x, linha, decisao: decisao ? evento(decisao) : null, carteira, custos, ...marcacao(x, d) };
+}
+
+// Day trade: o relatório só traz o valor do começo do dia. O detalhe traz o caixa e a exposição de agora (a preço
+// da última checagem), então o valor atual é caixa + exposição. Comprado e sem preço: não inventa um valor, mostra
+// o do começo do dia e diz que falta a marcação (auditoria de 28/10/2026, achado G).
+function marcacao(x: Entidade, d: DetalheRobo): Partial<Entidade> {
+  if (!x.id.startsWith("intradia:") || d.caixa == null) return {};
+  const posicoes = Object.entries(d.quantidades || {}).map(([s, q]) => `${q.toLocaleString("pt-BR", { maximumFractionDigits: 8 })} ${s.replace(/USDT$/, "")}`);
+  const comprado = posicoes.length > 0 || (d.exposicao ?? 0) > 0;
+  if (d.exposicao == null) {
+    return { posicoes: posicoes.length ? posicoes : x.posicoes,
+      valorNota: `${comprado ? "comprado, mas sem preço atual para marcar" : "sem preço atual"}: mostrando o ${x.valorNota || "valor do começo do dia"}` };
+  }
+  const valor = d.caixa + d.exposicao;
+  return { patrimonio: valor, resultado: x.capital ? valor / x.capital - 1 : x.resultado, posicoes,
+    valorNota: (comprado ? `caixa + posição a preço de ${quando(d.a_preco_de)}` : "todo em caixa") + (d.a_preco_de || !comprado ? "" : " (hora do preço não informada)") };
 }
 
 // ---------- filtros ----------

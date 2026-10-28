@@ -12,7 +12,8 @@ const ESTRATEGIA: Record<string, string> = {
 const LIMITES = "Se a conta perder mais de 15% num dia, ela pausa. Se cair 35% desde o melhor momento, ela para de vez e só volta com ordem sua.";
 const TIPO: Record<string, string> = { pausar: "pausou", parar: "parou", retomar: "voltou", alerta: "aviso" };
 
-// O que os agentes de IA fazem. O programa não lê os arquivos deles, então isto é escrito à mão (atualizado em 26/10/2026).
+// O que os agentes de IA fazem. O programa não lê os arquivos deles, então isto é escrito à mão (revisto em 28/10/2026,
+// com as regras da fila por capacidade e o executor da fábrica pela API). O andamento real de cada candidato está na aba Fábrica.
 const AGENTES: Record<string, { nome: string; cor: string; funcao: string; nao: string; agenda: string; ultimo: string; link?: { rotulo: string; url: string } }> = {
   "agente:plantonista": {
     nome: "Plantonista", cor: "#7fb8ff",
@@ -24,24 +25,24 @@ const AGENTES: Record<string, { nome: string; cor: string; funcao: string; nao: 
   },
   "agente:pesquisador": {
     nome: "Pesquisador", cor: "#8fa9b3",
-    funcao: "Procura estratégias publicadas em estudos e escreve até 4 fichas por mês para o laboratório testar.",
+    funcao: "Procura estratégias publicadas em estudos e escreve fichas para o laboratório testar. Sem teto por mês: valem os freios por mercado (3 em triagem, 2 em código, 2 em teste).",
     nao: "Não roda código de outras pessoas e não vê os nossos resultados, para não escolher pelo que já sabe.",
-    agenda: "Toda segunda-feira, às 9h41 (Brasília).",
-    ultimo: "26/10/2026: 2 fichas. Virada do mês (nota 2 de 5) e meia hora final do bitcoin (nota 1 de 5: a taxa come o ganho). A partir de agora reveza entre cripto, EUA e B3.",
+    agenda: "Quando a fila tem vaga: roda pela API na VPS, um candidato por vez, quando o Maestro aciona o executor da fábrica (teto de US$ 15 por candidato, dentro dos US$ 150 por mês da fábrica).",
+    ultimo: "Veja a aba Fábrica: lá aparece cada candidato, a etapa e o arquivo que comprova.",
   },
   "agente:revisor": {
     nome: "Revisor", cor: "#c9b38a",
     funcao: "Decide o que entra no laboratório e se um resultado vale. Faz a triagem das fichas, confere a regra congelada antes de rodar e dá o parecer final de cada teste.",
     nao: "Não escreve ficha nem código, não escolhe parâmetro e não libera dinheiro real. Na dúvida, devolve ou descarta.",
-    agenda: "Junto da linha de pesquisa semanal, sempre numa sessão separada de quem pesquisou.",
-    ultimo: "26/10/2026: meia hora final do bitcoin descartada (o ganho por operação não paga a taxa); virada do mês devolvida (falta a janela exata no artigo).",
+    agenda: "Depois de cada ficha, conferência ou teste, sempre numa sessão separada de quem pesquisou (contexto limpo).",
+    ultimo: "Veja a aba Fábrica: os pareceres de cada candidato ficam lá, com o arquivo de prova.",
   },
   "agente:formalizador": {
     nome: "Formalizador", cor: "#a99ae0",
     funcao: "Transforma uma ficha aceita pelo Revisor em regra congelada, com lacre, e em código testado.",
     nao: "Não roda o teste final, não muda a regra depois do lacre e não escolhe parâmetro que não esteja na ficha.",
-    agenda: "Quando o Revisor aceita uma ficha (no máximo 2 por mês).",
-    ultimo: "Ainda nenhuma ficha aceita. Em 26/10 as regras de EUA e B3 foram lacradas para ele copiar.",
+    agenda: "Quando o Revisor aceita uma ficha (sem teto por mês; até 2 em código por mercado ao mesmo tempo).",
+    ultimo: "Veja a aba Fábrica: regras congeladas e lacradas aparecem na etapa de especificação.",
   },
   "agente:sentinela": {
     nome: "Sentinela", cor: "#e07a6a",

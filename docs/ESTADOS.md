@@ -37,6 +37,13 @@ nunca se confundem (Plano Geral 2.0, §17).
 | Day trade em cripto | de minuto em minuto | 20 min |
 | Carteiras de referência | uma vez por dia, 19h50 de Brasília | 26 h |
 
+Desde a 0.1.13 há dois relógios. O **envio da VPS** (o exportador manda às :10 e :40) é medido contra a hora de
+agora: passou de 75 min, todos ficam "dado velho". O **relatório de cada simulação** é medido contra a hora em que a VPS
+montou aquele envio, não contra agora. Assim, um day trade que estava em dia no envio das 10:40 não vira "dado velho"
+às 11:05 só porque o próximo envio ainda não chegou; e um day trade que já estava parado quando a VPS montou o envio
+continua acusado. O motivo mostra as duas horas (do relatório e do envio). O limite não foi afrouxado: só passou a
+medir a coisa certa (auditoria de 28/10/2026, achado H).
+
 ## Detalhe de cada robô (0.1.10, linha `robos:detalhe`)
 
 A situação diz **se** o robô está rodando. O detalhe diz **o que ele fez e por quê**. Vem numa linha só da VPS,
@@ -99,6 +106,7 @@ com o diário. A conciliação é a do próprio lote.
 ## O que ainda não vem da VPS
 
 - Até o exportador novo ser publicado na VPS (PR daytrade-lab#32), custos do cripto diário e do day trade não aparecem, e o caixa das carteiras é calculado.
+- Até o exportador com `elenco:esperado` e as quantidades do day trade ser publicado, a conta de esperados não aparece e o day trade sem quantidade mostra só o valor.
 - A reserva de caixa só passa a ter número quando algum robô usar a carteira compartilhada.
 
 ## Capital das carteiras de referência
@@ -106,3 +114,39 @@ com o diário. A conciliação é a do próprio lote.
 Cada carteira mostra o capital que vem no dado (`capital_brl` dentro dela, desde a `carteiras-r100-v2`). Se o relatório
 for antigo e não trouxer, vale o capital geral do relatório e, sem ele, R$ 100. Desde 28/10/2026 a Brasil tem R$ 400 e EUA
 e Cripto R$ 100. O título da tela Contas diz "R$ X cada" só quando todas têm o mesmo capital.
+
+## Escritório gerado da lista (0.1.13, linha `elenco:esperado`)
+
+O escritório ganhou a **ala dos robôs**, à direita da ala de ações. Ela não tem cadeira escrita à mão: cada robô,
+régua e carteira da lista (a mesma da tela Robôs) ganha um lugar, numa faixa por mercado (Cripto, EUA, B3), em
+fileiras de até 7. A conta é feita em `src/dados/elenco.ts` (`planta`), com testes em `src/dados/elenco.test.ts`.
+O cripto diário (MM20 BTC, MM20 ETH e Momentum) continua no salão antigo, por causa do ensaio de dias passados.
+
+| No escritório | Quer dizer |
+|---|---|
+| Sentado | rodando e comprado |
+| Em pé na mesa | rodando em caixa, ou esperando (bolsa fechada, sem dado) |
+| Apagado | parado, falha de conexão ou sem telemetria; continua no lugar, não some |
+| Faixa no peito | régua ou carteira de referência (não opera) |
+| Número em verde ou vermelho sobre a cabeça | resultado desde o começo (só quando está rodando) |
+| Palavra sobre a cabeça | a situação, quando não é "ativo" (fechado, sem dado, dado velho, pausa, parado, sem capital) |
+
+Clicar numa pessoa da ala abre a mesma ficha da tela Robôs. Se a lista tiver mais gente que lugares, quem sobra
+fica fora do desenho e uma placa diz quantos: a tela Robôs continua mostrando todos.
+
+**Quem deveria aparecer.** O exportador da VPS manda a linha `elenco:esperado` (daytrade-lab,
+`painel-aovivo/painel/elenco.py`), com os ids tirados dos config.json de cada simulação instalada. O painel compara:
+
+- **Esperados:** quantos o cadastro diz que existem.
+- **Recebidos:** quantos desses vieram na leitura.
+- **No escritório:** quantos estão desenhados.
+
+Quem é esperado e não veio entra na lista como **sem telemetria** (situação "aguardando dado", sem número nenhum),
+em vez de sumir. Sem a linha `elenco:esperado` (exportador antigo), a conta mostra só recebidos e desenhados.
+
+## Valor do day trade (0.1.13)
+
+O relatório do day trade só traz o valor do **começo do dia**. Com a linha `robos:detalhe`, o valor passa a ser o
+**caixa + a posição a preço da última checagem** (de meia em meia hora), e as posições aparecem com a quantidade.
+Debaixo do valor fica de quando ele é. Comprado e sem preço da checagem: o painel não inventa, mostra o valor do
+começo do dia e diz que falta a marcação. Lucro realizado e não realizado separados ainda não vêm da VPS.
