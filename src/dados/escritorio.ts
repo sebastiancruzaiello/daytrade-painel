@@ -28,7 +28,16 @@ export type MembroVivo = {
   ultima: string | null; fonte: string | null; texto: string | null; executando: boolean; usd_hoje: number | null;
   prova_na_vps: boolean; sem_prova: string | null;
 };
-export type Agentes = { em: string; membros: MembroVivo[]; fila_esperas: { candidato: string; motivo: string; texto: string; desde: string }[] };
+export type Agentes = { em: string; membros: MembroVivo[]; fila_esperas: { candidato: string; motivo: string; texto: string; desde: string }[]; tarefas?: QuadroTarefas | null };
+// Registro de tarefas da equipe (linha "tarefas:resumo", equipe/tarefas no daytrade-lab, T-20261028-04): o que cada
+// membro tem em execução, o que espera e desde quando. "atividade não confirmada" = em execução sem sinal há mais de
+// 6 h (o registro decide; o painel só mostra). registro_em = de quando é a cópia do registro que a VPS leu.
+export type TarefaViva = { id: string; titulo: string; situacao: string; execucao?: string | null; desde: string | null };
+export type MembroTarefas = {
+  em_execucao: TarefaViva[]; aguardando: { id: string; titulo: string; condicao: string }[];
+  planejadas: number; concluidas: number; ultima_entrega: { id: string; titulo: string; em: string; artefato?: string | null } | null;
+};
+export type QuadroTarefas = { em: string | null; registro_em: string | null; por_membro: Record<string, MembroTarefas> };
 export type ResultadoOp = {
   moeda: string; tipo: string; capital: number | null; patrimonio: number | null; a_preco_de: string | null;
   dia: number | null; aporte_dia: number; base_dia: number | null; base_origem: string | null; base_em: string | null;
@@ -47,8 +56,28 @@ export function prontidaoDeLinhas(rows: Linha[]): Prontidao | null {
   return m && m.sessoes && m.inventario && m.checklist ? m as Prontidao : null;
 }
 export function agentesDeLinhas(rows: Linha[]): Agentes | null {
-  const m = json(rows, "agentes:resumo");
-  return m && Array.isArray(m.membros) ? m as Agentes : null;
+  const m = json(rows, "agentes:resumo"), tarefas = tarefasDeLinhas(rows);
+  if (m && Array.isArray(m.membros)) return { ...(m as Agentes), tarefas };
+  return tarefas ? { em: tarefas.em || "", membros: [], fila_esperas: [], tarefas } : null;
+}
+export function tarefasDeLinhas(rows: Linha[]): QuadroTarefas | null {
+  const m = json(rows, "tarefas:resumo");
+  if (!m || !m.por_membro || typeof m.por_membro !== "object") return null;
+  const s = (x: unknown) => typeof x === "string" && x.trim() ? x.trim() : null;
+  const por_membro: Record<string, MembroTarefas> = {};
+  for (const [id, x] of Object.entries<any>(m.por_membro)) {
+    if (!x || typeof x !== "object") continue;
+    por_membro[id] = {
+      em_execucao: (Array.isArray(x.em_execucao) ? x.em_execucao : []).filter((t: any) => t && s(t.id))
+        .map((t: any) => ({ id: t.id, titulo: s(t.titulo) || t.id, situacao: s(t.situacao) || "em execução", execucao: s(t.execucao), desde: s(t.desde) })),
+      aguardando: (Array.isArray(x.aguardando) ? x.aguardando : []).filter((t: any) => t && s(t.id))
+        .map((t: any) => ({ id: t.id, titulo: s(t.titulo) || t.id, condicao: s(t.condicao) || "condição não informada" })),
+      planejadas: Number(x.planejadas) || 0, concluidas: Number(x.concluidas) || 0,
+      ultima_entrega: x.ultima_entrega && s(x.ultima_entrega.id) ? { id: x.ultima_entrega.id, titulo: s(x.ultima_entrega.titulo) || "",
+        em: s(x.ultima_entrega.em) || "", artefato: s(x.ultima_entrega.artefato) } : null,
+    };
+  }
+  return { em: s(m.em), registro_em: s(m.registro_em), por_membro };
 }
 export function resultadoDeLinhas(rows: Linha[]): Resultados | null {
   const m = json(rows, "resultado:resumo");
@@ -139,6 +168,22 @@ export function semPrecoNovo(r: ResultadoOp): boolean {
   const p = Date.parse(r.a_preco_de.length <= 10 ? r.a_preco_de + "T23:59:59Z" : r.a_preco_de);
   return Number.isFinite(p) && p <= Date.parse(r.base_em);
 }
+// Hora da próxima rodada, em Brasília: "21:02" se for hoje, "02/11 21:02" se for outro dia.
+export function horaCurta(iso: string | null | undefined, agora: number): string {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(t)) return "";
+  const z = { timeZone: "America/Sao_Paulo" } as const;
+  const dia = (x: number) => new Date(x).toLocaleDateString("pt-BR", { ...z, day: "2-digit", month: "2-digit" });
+  const hm = new Date(t).toLocaleTimeString("pt-BR", { ...z, hour: "2-digit", minute: "2-digit" });
+  return dia(t) === dia(agora) ? hm : `${dia(t)} ${hm}`;
+}
+// Segunda linha do robô na área de lazer: o evento do calendário (curto) e a próxima rodada.
+export function linhaEspera(e: { curto: string; proxima: string | null; evento: string | null }, agora: number): string {
+  const ev = e.evento ? e.evento.split(":")[0].trim() : "";
+  const ja = ev && e.curto.includes(ev.split(" ")[0]);
+  const h = horaCurta(e.proxima, agora);
+  return [ja ? "" : ev, h ? "próx. " + h : ""].filter(Boolean).join(" · ");
+}
 export function porcento(f: number): string {
   if (!Number.isFinite(f)) return "";
   const a = Math.abs(f * 100), s = a < 0.005 ? "" : f > 0 ? "+" : "−";
@@ -150,7 +195,7 @@ const quando = (iso: string) => iso.length <= 10 ? iso.slice(8, 10) + "/" + iso.
 // ---------- agentes e apoio: atividade comprovada ----------
 // Personagens fixos do escritório → ficha do catálogo. Primeiro a versão da VPS (tem prova), depois a da nuvem.
 export const PERSONAGEM_FICHA: Record<string, string[]> = {
-  "staff:escrivao": ["escrivao"], "staff:guardiao": ["guardiao-risco"],
+  "staff:maestro": ["maestro"], "staff:escrivao": ["escrivao"], "staff:guardiao": ["guardiao-risco"],
   "agente:pesquisador": ["pesquisador"], "agente:revisor": ["revisor"], "agente:formalizador": ["formalizador"],
   "agente:plantonista": ["plantonista-api", "plantonista"], "agente:sentinela": ["sentinela-api", "sentinela"],
   "robo:guardiao-dados": ["guardiao-dados"], "robo:coletor-clima": ["coletor-clima"],
@@ -180,6 +225,33 @@ export function atividade(ms_: MembroVivo[] | undefined, agora: number, extra?: 
       : { txt: "parado desde " + quando(prova.em).slice(0, 5), tom: "aviso", posto: "alerta", detalhe: det };
   }
   return { txt: "sem tarefa · aguardando agenda", tom: "espera", posto: "folga", detalhe: `${m!.sem_prova || "sem prova legível"}. Agenda: ${m!.quando}.` };
+}
+
+// O que o registro de tarefas diz de um membro (antes da prova de atividade): em execução fica no posto com a
+// tarefa acima da cabeça; "atividade não confirmada" (6 h sem sinal) fica no posto com aviso; só aguardando uma
+// condição (um sim do Sebastian, outra tarefa) não está trabalhando agora e vai para a área de lazer, dizendo o quê.
+const NC = "atividade não confirmada";
+const tituloCurto = (t: string) => t.length > 24 ? t.slice(0, 23) + "…" : t;
+const idCurto = (id: string) => "T-" + id.slice(-2);
+export function atividadeTarefas(m: MembroTarefas | undefined): Atividade | null {
+  if (!m) return null;
+  const desde = (t: TarefaViva) => (t.desde ? ` (desde ${quando(t.desde)})` : "");
+  const lista = (ts: TarefaViva[]) => ts.map(t => `${t.id} ${t.titulo}: ${t.situacao}${desde(t)}`).join("; ");
+  if (m.em_execucao.length) {
+    const vivas = m.em_execucao.filter(t => t.situacao !== NC);
+    const t = (vivas.length ? vivas : m.em_execucao).slice().sort((a, b) => ms(b.desde) - ms(a.desde))[0];
+    const mais = m.em_execucao.length > 1 ? ` +${m.em_execucao.length - 1}` : "";
+    if (!vivas.length) return { txt: NC, tom: "aviso", posto: "alerta",
+      detalhe: `Em execução sem sinal há mais de 6 horas, pelo registro de tarefas: ${lista(m.em_execucao)}.` };
+    return { txt: `${idCurto(t.id)} · ${tituloCurto(t.titulo)}${mais}`, tom: "ok", posto: "trabalhando",
+      detalhe: `Pelo registro de tarefas: ${lista(m.em_execucao)}.` + (m.aguardando.length ? ` Aguardando: ${m.aguardando.map(a => `${a.id} (${a.condicao})`).join("; ")}.` : "") };
+  }
+  if (m.aguardando.length) {
+    const a = m.aguardando[0];
+    return { txt: `aguarda: ${tituloCurto(a.condicao)}`, tom: "espera", posto: "folga",
+      detalhe: `Nada em execução agora. Aguardando: ${m.aguardando.map(x => `${x.id} ${x.titulo} (${x.condicao})`).join("; ")}.` };
+  }
+  return null;
 }
 
 // ---------- reconciliação: aprovado → instalado → em dia → no cron → enviado → desenhado ----------

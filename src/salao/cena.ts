@@ -6,7 +6,7 @@ import { segurar, pregao, idxAte } from "../dados/mercados";
 import { criarCamera } from "./camera";
 import { planta, ALA, ondeFica, vagasLazer, LAZER } from "../dados/elenco";
 import { ESTADOS } from "../dados/estados";
-import { rotuloFinanceiro, rotuloSituacao, DE_GUARDA, semPrecoNovo, porcento } from "../dados/escritorio";
+import { rotuloFinanceiro, rotuloSituacao, DE_GUARDA, semPrecoNovo, porcento, linhaEspera } from "../dados/escritorio";
 
 const FONT = '"Chakra Petch", "Segoe UI", sans-serif';
 // O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22; a ala dos robôs, gerada da lista de
@@ -45,6 +45,8 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   let S: EstadoCena | null = null, flash = 0, raf = 0, lastT = 0;
   let chars = [];
   const staff = [
+    // Maestro: o Claude que coordena a equipe; acima da cabeça, a tarefa dele no registro de tarefas (T-20261028-04).
+    { id: "staff:maestro", nome: "Maestro", x: 2.5, y: 1.1, cor: "#f0b25a", label: "coordena a equipe" },
     { id: "staff:escrivao", nome: "Escrivão", x: 6.2, y: 1.4, cor: C.staff, label: "diário ok", anda: true },
     { id: "agente:pesquisador", nome: "Pesquisador", x: 0.9, y: 3.4, cor: "#8fa9b3", label: "fichas · pela fábrica" },
     { id: "agente:plantonista", nome: "Plantonista", x: 4.4, y: 2.0, cor: "#7fb8ff", label: "boletim diário" },
@@ -251,6 +253,10 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     }
     else if (S.aoVivo && sit && chars.find(o => o.conta === c.conta && o.mode === "mesa") === c) {
       const x = (S.entidades || []).find(e => e.id === "cripto:" + c.conta); if (x) rotulosDe(x, sx, by, "mesa");
+    }
+    // No café ou na sinuca da sala de cripto: o motivo concreto de estar fora da mesa e a próxima rodada (uma vez por conta).
+    else if (S.aoVivo && c.mode === "lounge" && !walking && chars.find(o => o.conta === c.conta && o.mode === "lounge") === c) {
+      const x = (S.entidades || []).find(e => e.id === "cripto:" + c.conta); if (x) rotulosDe(x, sx, by, "lazer");
     }
     if (c.bubble && c.bt > 0) bubble(sx + 14, by - 60, c.bubble, c.bcol);
   }
@@ -521,7 +527,9 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   // Acima da cabeça, em duas linhas: o ganho/perda do período (verde, vermelho ou neutro, com sinal e moeda) e a
   // situação (comprado, em caixa, monitorando, sem dado...). A cor do dinheiro nunca é a cor da saúde.
   // onde = "mesa": o dinheiro em cima e o que está comprado embaixo. "alerta": só o alerta (falha, pausa, sem dado).
-  // "lazer": nada de dinheiro; só um aviso curto quando já decidiu comprar na próxima abertura.
+  // "lazer": nada de dinheiro; o motivo concreto de estar fora da mesa (sem sinal, compra recusada pelo FOMC, capital
+  // novo...) e, embaixo, o evento do dia e a hora da próxima rodada que decide (T-20261028-05). Sem o motivo da VPS,
+  // só o aviso de compra na próxima abertura.
   const POS_COR = "#c9d1cd";
   const curtoPos = (ps) => !ps || !ps.length ? "" : (ps[0].length > 16 ? ps[0].slice(0, 15) + "…" : ps[0]) + (ps.length > 1 ? ` +${ps.length - 1}` : "");
   function rotulosDe(x, sx, by, onde = "mesa") {
@@ -541,6 +549,10 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       }
       else if (x.resultado != null) ls.push({ txt: pct(x.resultado), col: x.resultado > 0 ? C.good : x.resultado < 0 ? C.bad : C.muted, forte: true });
       if (x.posicoes && x.posicoes.length) ls.push({ txt: "comprado · " + curtoPos(x.posicoes), col: POS_COR });
+    } else if (x.espera && S.aoVivo) {
+      ls.push({ txt: x.espera.curto, col: "#8fb0ff" });
+      const l2 = linhaEspera(x.espera, Date.now());
+      if (l2) ls.push({ txt: l2, col: x.espera.evento && !l2.startsWith("próx.") ? C.warn : C.muted });
     } else if (x.decisao && x.decisao.tipo === "vai") ls.push({ txt: "compra na próxima abertura", col: "#8fb0ff" });
     else if (x.estado === "sem-capital") ls.push({ txt: "sem capital", col: C.muted });
     rotulo(sx, by - 38, ls);

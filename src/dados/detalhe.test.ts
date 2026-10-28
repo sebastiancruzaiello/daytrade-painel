@@ -78,3 +78,15 @@ test("na montagem, quem tem detalhe ganha; quem não tem continua igual", () => 
   assert.equal(com.find(x => x.id === "cripto:mm20-btc")!.carteira!.caixa, 0);
   assert.equal(com.find(x => x.id === "cripto:momentum")!.carteira, undefined);
 });
+
+test("motivo de estar fora da mesa e a regra pura do dia chegam do detalhe", () => {
+  const espera = { curto: "sem sinal · abaixo do teto", txt: "checagem das 13:30 UTC: preço abaixo do teto", proxima: "2026-10-28T14:00:00+00:00", evento: "FOMC hoje: compra barrada" };
+  const d = detalheDeLinhas(linha({ robos: { "cripto:mm20-btc": { ...MM20, espera, sombra_hoje: { operacoes: ["compra 08:30", "venda 11:30"], resultado: -0.0032, comprada: false, txt: "regra pura hoje (sem o motor de risco): compra 08:30, venda 11:30; -0,32% com custos" } },
+    "cripto:mm20-eth": { ...MM20, espera: { txt: "sem curto não vale" } } } }))!;
+  assert.deepEqual(d.robos["cripto:mm20-btc"].espera, espera);
+  assert.equal(d.robos["cripto:mm20-eth"].espera, null);
+  const x = comDetalhe({ ...base, sombra: 0.01 }, d.robos["cripto:mm20-btc"]);
+  assert.equal(x.espera!.curto, "sem sinal · abaixo do teto");
+  assert.ok(Math.abs(x.sombra! - (1.01 * 0.9968 - 1)) < 1e-12, "regra pura = acumulado até o começo do dia × o dia de hoje");
+  assert.match(x.sombraHoje!, /compra 08:30, venda 11:30/);
+});

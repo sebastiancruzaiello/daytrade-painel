@@ -2,6 +2,7 @@
 // Chegam numa linha só, "lote:resumo", gravada pelo exportador da VPS a partir do relatório do próprio lote.
 // Como estados.ts, não importa nada em tempo de execução: os testes rodam direto no Node.
 import type { Linha } from "./formato";
+import type { Espera } from "./detalhe";
 
 export type DecisaoLote = { dia: string | null; para: string | null; texto: string };
 export type CapitalInsuficiente = {
@@ -16,6 +17,7 @@ export type RoboLote = {
   custos: number | null; dividendos: number | null; imposto_pago: number | null; caixa: number | null;
   posicoes: Record<string, number>; ultima_decisao: DecisaoLote | null; capital_insuficiente: CapitalInsuficiente | null;
   conciliacao: true | string[]; historico: [string, number, number | null][];
+  espera: Espera | null;  // sem posição: motivo concreto e próxima rodada (exportador, T-20261028-05)
 };
 export type Lote = {
   versao: string | null; gerado_em: string | null; relatorio_em: string | null; diario_integro: boolean;
@@ -47,6 +49,8 @@ export function loteDeLinhas(rows: Linha[]): Lote | null {
         operacoes: num(x.operacoes), custos: num(x.custos), dividendos: num(x.dividendos), imposto_pago: num(x.imposto_pago),
         caixa: num(x.caixa),
         posicoes: Object.fromEntries(Object.entries<any>(x.posicoes && typeof x.posicoes === "object" ? x.posicoes : {}).filter(([, q]) => num(q))),
+        espera: x.espera && typeof x.espera === "object" && txt(x.espera.curto)
+          ? { curto: x.espera.curto.trim(), txt: txt(x.espera.txt) || x.espera.curto.trim(), proxima: txt(x.espera.proxima), evento: txt(x.espera.evento) } : null,
         ultima_decisao: d && txt(d.texto) ? { dia: txt(d.dia), para: txt(d.para), texto: d.texto.trim() } : null,
         capital_insuficiente: ci && typeof ci === "object" ? {
           ativo: txt(ci.ativo), preco: num(ci.preco), disponivel: num(ci.disponivel), minimo_por_ordem: num(ci.minimo_por_ordem),
