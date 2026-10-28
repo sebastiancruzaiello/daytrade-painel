@@ -2,7 +2,7 @@
 // Rodam direto no Node (npm test), sem montar a tela.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { montarEntidades, filtrar, filtroVazio, opcoes, conciliar, ESTADOS, type Entrada, type Conexao } from "./estados.ts";
+import { montarEntidades, filtrar, filtroVazio, opcoes, conciliar, capitalCarteira, ESTADOS, type Entrada, type Conexao } from "./estados.ts";
 import type { Fonte } from "./formato";
 import type { Vizinhas } from "./vizinhas";
 
@@ -162,4 +162,20 @@ test("conciliação da carteira: caixa + ativo = valor, sem dinheiro a mais", ()
   assert.equal(conciliar({ valor_brl: 300, quantidade: 0.0002, preco_atual: 90000, cambio_atual: 5.5, moeda: "USDT", situacao: "investida" }, 100).fecha, false);
   assert.equal(conciliar({ valor_brl: 100, quantidade: 0, preco_atual: 140, cambio_atual: null, moeda: "BRL", situacao: "capital insuficiente" }, 100).fecha, true);
   assert.equal(conciliar({ valor_brl: 100, quantidade: 1, preco_atual: null, cambio_atual: null, moeda: "USD", situacao: "investida" }, 100).fecha, false);
+});
+
+test("carteira com capital próprio: a Brasil de R$ 400 usa o dela, as outras o geral", () => {
+  const v = carteiras() as any;
+  v.relatorio.versao = "carteiras-r100-v2";
+  Object.assign(v.relatorio.carteiras.brasil, { capital_brl: 400, situacao: "investida", quantidade: 2, comprou_em: "2026-10-28", preco_da_compra: 184, preco_atual: 184, dia_do_preco: "2026-10-28", valor_brl: 399.63, resultado: 399.63 / 400 - 1, custos_brl: 0.37, minimo_brl: null, historico: [["2026-10-28", 399.63]] });
+  const e = entrada({ viz: { bolsa: null, intradia: null, carteiras: v } as unknown as Vizinhas });
+  const br = achar(e, "carteira:brasil"), cr = achar(e, "carteira:cripto");
+  assert.equal(br.capital, 400);
+  assert.equal(br.estado, "ativo");
+  assert.equal(br.carteira!.fecha, true, "caixa 31,63 + 2 cotas a 184 = valor");
+  assert.equal(br.linha.find(x => /valor/.test(x.txt))!.tom, "ruim", "abaixo dos R$ 400, não dos R$ 100");
+  assert.equal(cr.capital, 100);
+  assert.equal(capitalCarteira({ capital_brl: 100 }, {}), 100);
+  assert.equal(capitalCarteira({}, {}), 100);
+  assert.equal(capitalCarteira({ capital_brl: 100 }, { capital_brl: 400 }), 400);
 });

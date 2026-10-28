@@ -4,6 +4,7 @@ import { KS, NOME, COR, REF, fmt, pct, dBR, hora, resumoConta, type Dia } from "
 import type { Base } from "../App";
 import { IconeConta } from "./icones";
 import { segurar, type Extras } from "../dados/mercados";
+import { capitalCarteira } from "../dados/estados";
 import { CAPITAL, nomeViz, veredito, type Vizinhas as Viz, type LinhaBolsa } from "../dados/vizinhas";
 
 const ACOES = [["spy", "EUA · Segurar SPY", "#e8a25b"], ["bova", "B3 · Segurar BOVA11", "#5fcf8f"]] as const;
@@ -111,24 +112,28 @@ function Curva({ dias, di, ex }: { dias: Dia[]; di: number; ex: Extras }) {
 
 const COR_CARTEIRA: Record<string, string> = { brasil: "#5fcf8f", eua: "#e8a25b", cripto: "#f39a3d" };
 
-// Três carteiras de referência com R$ 100 cada: só segurar, com lote, custos e câmbio de verdade.
+// Três carteiras de referência: só segurar, com lote, custos e câmbio de verdade. O capital de cada uma vem do dado
+// (desde 28/10/2026 a Brasil tem R$ 400 e as outras R$ 100), nunca de um texto fixo.
 function Carteiras({ viz }: { viz: Viz }) {
   const c = viz.carteiras;
   if (!c) return null;
-  const r = c.relatorio, cap = r.capital_brl || 100;
+  const r = c.relatorio, lista = Object.entries(r.carteiras || {});
+  const caps = lista.map(([, w]) => capitalCarteira(r, w));
+  const igual = caps.length > 0 && caps.every(x => x === caps[0]);
   const real = (v: number) => "R$ " + fmt(v, 2);
   return (
     <section className="vizinhas">
-      <h2>Carteiras de referência · R$ {fmt(cap)} cada</h2>
+      <h2>Carteiras de referência · {igual ? `R$ ${fmt(caps[0])} cada` : lista.map(([, w], i) => `${w.nome} R$ ${fmt(caps[i])}`).join(", ")}</h2>
       <p className="nota">
-        Dinheiro de mentira. Cada carteira compra o ativo de referência quando R$ {fmt(cap)} dão para comprar e nunca vende.
+        Dinheiro de mentira. Cada carteira compra o ativo de referência quando o capital dela dá para comprar e nunca vende.
         Os resultados são separados e não se somam. Atualizado {hora(c.relatorio_em)}.
       </p>
       {(r.avisos || []).map(a => <p key={a} className="nota aviso">{a}</p>)}
       <div className="contas-grade">
-        {Object.entries(r.carteiras || {}).map(([k, w]) => {
+        {lista.map(([k, w], i) => {
           const insuf = w.situacao === "capital insuficiente";
           const changes: MetricChange[] = [
+            { label: "Capital", change: `R$ ${fmt(caps[i])} de mentira`, tone: "neutral" },
             { label: "Valor hoje", change: `${real(w.valor_brl)} (${pct(w.resultado)})`, tone: w.resultado > 0 ? "good" : w.resultado < 0 ? "bad" : "neutral" },
             { label: "Situação", change: w.situacao + (w.motivo ? ` (${w.motivo})` : ""), tone: w.situacao === "investida" ? "good" : insuf ? "bad" : "neutral", direction: w.situacao === "investida" ? "up" : "down" },
           ];

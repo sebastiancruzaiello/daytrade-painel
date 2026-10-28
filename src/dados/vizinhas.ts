@@ -25,7 +25,7 @@ type Envelope<R> = {
 export type SimBolsa = Envelope<{ mercados?: Record<string, MercadoBolsa>; proximos_eventos?: [string, string][] }>;
 export type SimIntradia = Envelope<{ dia?: string; contas?: Record<string, ContaIntradia>; boletins?: Boletim[] }>;
 export type Carteira = {
-  nome: string; ativo: string; moeda: string; situacao: string; motivo: string | null; valor_brl: number; resultado: number;
+  nome: string; ativo: string; moeda: string; capital_brl?: number; situacao: string; motivo: string | null; valor_brl: number; resultado: number;
   quantidade: number; comprou_em: string | null; preco_da_compra: number | null; preco_atual: number | null;
   dia_do_preco: string | null; cambio_atual: number | null; custos_brl: number; minimo_brl: number | null; premissa: string;
 };
