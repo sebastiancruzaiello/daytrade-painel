@@ -77,6 +77,11 @@ no posto, em amarelo, porque falta de dado não pode parecer folga; o Guardião 
 exceção é o **Guardião do motor de risco**: ele não tem tarefa própria, faz parte do motor e confere cada ordem na hora
 em que ela nasce, então fica sempre de guarda na cabine. Regra em `src/dados/escritorio.ts` (`atividade`, campo `posto`).
 
+Desde a 0.1.17 o rótulo de ganho ou perda traz também a **porcentagem** (sobre o começo do dia, ou sobre o capital
+no acumulado). O Momentum, que é uma conta só com três moedas, ganha um rótulo da conta acima do grupo e, em cada
+cadeira, a moeda e a variação dela no último fechamento diário. Quem só marca uma vez por dia mostra "DIA — sem preço
+novo desde ..." e o acumulado, em vez de um 0,00 que parece resultado.
+
 ## Desenvolver
 
     npm ci

@@ -114,16 +114,35 @@ export function comSinal(v: number, moeda: string): string {
 export type Periodo = "dia" | "acumulado";
 export type Rotulo = { txt: string; tom: "bom" | "ruim" | "neutro" | "aviso"; nota: string };
 
-// O que vai acima da cabeça de quem tem conta: "DIA +R$ 3,24" verde, "ACUM −US$ 1,10" vermelho, zero neutro.
+// O que vai acima da cabeça de quem tem conta: "DIA +R$ 3,24 (+0,81%)" verde, "ACUM −US$ 1,10 (−0,11%)" vermelho,
+// zero neutro. A porcentagem é sobre a base do período (começo do dia; capital com aportes no acumulado).
+// Quem só marca uma vez por dia (cripto diário às 21h de Brasília, bolsa depois do fechamento) não tem preço novo
+// desde a base do dia: em vez de um "0,00" que parece resultado, o rótulo diz desde quando é o último preço.
 export function rotuloFinanceiro(r: ResultadoOp | undefined, periodo: Periodo): Rotulo | null {
   if (!r) return null;
   const pre = periodo === "dia" ? "DIA" : "ACUM";
   const v = periodo === "dia" ? r.dia : r.acumulado;
   if (v == null) return { txt: `${pre} — sem marcação`, tom: "aviso", nota: r.sem_marcacao || "sem preço válido para marcar" };
+  if (periodo === "dia" && semPrecoNovo(r))
+    return { txt: `DIA — sem preço novo desde ${quando(r.a_preco_de!)}`, tom: "aviso",
+      nota: `o último preço é de ${quando(r.a_preco_de!)}, de antes do começo do dia; o dia só muda na próxima marcação` };
   const tom = Math.abs(v) < 0.005 && v !== 0 ? (v > 0 ? "bom" : "ruim") : v > 0 ? "bom" : v < 0 ? "ruim" : "neutro";
+  const sobre = periodo === "dia" ? r.base_dia : r.capital;
+  const pc = sobre ? ` (${porcento(v / sobre)})` : "";
   const base = periodo === "dia" && r.base_origem ? ` · base: ${r.base_origem}` : "";
   const aporte = r.aporte_dia ? ` · aporte de ${dinheiro(r.aporte_dia, r.moeda)} hoje (não é lucro)` : "";
-  return { txt: `${pre} ${comSinal(v, r.moeda)}`, tom, nota: `marcado a preço de ${r.a_preco_de ? quando(r.a_preco_de) : "—"}${base}${aporte}` };
+  return { txt: `${pre} ${comSinal(v, r.moeda)}${pc}`, tom, nota: `marcado a preço de ${r.a_preco_de ? quando(r.a_preco_de) : "—"}${base}${aporte}` };
+}
+// O preço usado é de antes (ou do mesmo instante) da base do dia: nada mudou desde o começo do dia.
+export function semPrecoNovo(r: ResultadoOp): boolean {
+  if (!r.a_preco_de || !r.base_em) return false;
+  const p = Date.parse(r.a_preco_de.length <= 10 ? r.a_preco_de + "T23:59:59Z" : r.a_preco_de);
+  return Number.isFinite(p) && p <= Date.parse(r.base_em);
+}
+export function porcento(f: number): string {
+  if (!Number.isFinite(f)) return "";
+  const a = Math.abs(f * 100), s = a < 0.005 ? "" : f > 0 ? "+" : "−";
+  return s + a.toFixed(2).replace(".", ",") + "%";
 }
 const quando = (iso: string) => iso.length <= 10 ? iso.slice(8, 10) + "/" + iso.slice(5, 7)
   : new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
