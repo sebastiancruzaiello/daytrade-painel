@@ -88,12 +88,24 @@ const R = (p: Partial<ResultadoOp>): ResultadoOp => ({
 test("rótulo: aporte não vira lucro e o período escolhe o número", () => {
   const r = R({ aporte_dia: 300, dia: 1.5, acumulado: 1.5 });
   const d = rotuloFinanceiro(r, "dia")!;
-  assert.equal(d.txt, "DIA +R$ 1,50");
+  assert.equal(d.txt, "DIA +R$ 1,50 (+1,50%)");
   assert.equal(d.tom, "bom");
   assert.match(d.nota, /aporte de R\$ 300,00 hoje \(não é lucro\)/);
-  assert.equal(rotuloFinanceiro(R({ acumulado: -2 }), "acumulado")!.txt, "ACUM −R$ 2,00");
+  assert.equal(rotuloFinanceiro(R({ acumulado: -2 }), "acumulado")!.txt, "ACUM −R$ 2,00 (−0,50%)");
   assert.equal(rotuloFinanceiro(R({ acumulado: -2 }), "acumulado")!.tom, "ruim");
   assert.equal(rotuloFinanceiro(R({ dia: 0 }), "dia")!.tom, "neutro");
+});
+
+test("quem só marca uma vez por dia não mostra um 0,00 que parece resultado: diz desde quando é o preço", () => {
+  // Momentum de 28/10: marcado às 00:02 UTC (21h02 de 27/10 em Brasília), base do dia tirada às 12:40 UTC.
+  const r = R({ moeda: "USDT", capital: 10000, patrimonio: 10036.78, a_preco_de: "2026-10-28T00:02:02+00:00", dia: 0, base_dia: 10036.78,
+    base_em: "2026-10-28T12:40:02+00:00", acumulado: 36.78 });
+  const d = rotuloFinanceiro(r, "dia")!;
+  assert.equal(d.txt, "DIA — sem preço novo desde 27/10, 21:02");
+  assert.equal(d.tom, "aviso");
+  assert.equal(rotuloFinanceiro(r, "acumulado")!.txt, "ACUM +36,78 USDT (+0,37%)");
+  assert.equal(rotuloFinanceiro({ ...r, a_preco_de: "2026-10-28T16:00:00+00:00", dia: 5 }, "dia")!.txt, "DIA +5,00 USDT (+0,05%)");
+  assert.equal(rotuloFinanceiro({ ...r, a_preco_de: "2026-10-27" }, "dia")!.tom, "aviso");  // bolsa: só o fechamento de ontem
 });
 
 test("rótulo sem preço diz que não tem marcação (amarelo), e quem não tem conta não ganha rótulo", () => {

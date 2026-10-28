@@ -6,7 +6,7 @@ import { segurar, pregao, idxAte } from "../dados/mercados";
 import { criarCamera } from "./camera";
 import { planta, ALA, ondeFica, vagasLazer, LAZER } from "../dados/elenco";
 import { ESTADOS } from "../dados/estados";
-import { rotuloFinanceiro, rotuloSituacao, DE_GUARDA } from "../dados/escritorio";
+import { rotuloFinanceiro, rotuloSituacao, DE_GUARDA, semPrecoNovo, porcento } from "../dados/escritorio";
 
 const FONT = '"Chakra Petch", "Segoe UI", sans-serif';
 // O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22; a ala dos robôs, gerada da lista de
@@ -231,10 +231,34 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     // Ao vivo, ganho/perda da conta inteira só em quem está na mesa (a primeira cadeira ocupada: as três do Momentum
     // são a mesma conta). No café ou na sinuca, só o nome. Em alerta, o alerta.
     if (c.mode === "alerta" && !walking) rotulo(sx, by - 38, [{ txt: "⚠ " + (c.alerta || "alerta"), col: C.warn, forte: true }]);
+    else if (S.aoVivo && sit && c.conta === "momentum") {
+      // As três cadeiras do Momentum são UMA conta com três moedas. Cada cadeira mostra a sua moeda e quanto ela
+      // variou no último fechamento diário; o ganho ou a perda da conta (valor e %) fica num rótulo só, acima do grupo.
+      const v = varMoeda(c.coin);
+      rotulo(sx, by - 38, [{ txt: c.coin + (v == null ? "" : " " + porcento(v)), col: v == null ? POS_COR : v > 0 ? C.good : v < 0 ? C.bad : POS_COR, forte: true }]);
+      const naMesa = chars.filter(o => o.conta === "momentum" && o.mode === "mesa");
+      if (naMesa[0] === c) {
+        const x = (S.entidades || []).find(e => e.id === "cripto:momentum");
+        const meio = naMesa[Math.floor(naMesa.length / 2)], [mx] = P(meio.x, meio.y);
+        const ls = [{ txt: `MOMENTUM · 1 conta, ${naMesa.length} moeda${naMesa.length > 1 ? "s" : ""}`, col: COR.momentum, forte: true }];
+        const fin = x && rotuloFinanceiro(x.res, S.periodo || "dia");
+        if (fin) ls.push({ txt: fin.txt, col: TOM_FIN[fin.tom], forte: true });
+        if (x && x.res && (S.periodo || "dia") === "dia" && semPrecoNovo(x.res)) {
+          const ac = rotuloFinanceiro(x.res, "acumulado"); if (ac) ls.push({ txt: ac.txt, col: TOM_FIN[ac.tom], forte: true });
+        }
+        rotulo(mx, by - 78, ls);
+      }
+    }
     else if (S.aoVivo && sit && chars.find(o => o.conta === c.conta && o.mode === "mesa") === c) {
       const x = (S.entidades || []).find(e => e.id === "cripto:" + c.conta); if (x) rotulosDe(x, sx, by, "mesa");
     }
     if (c.bubble && c.bt > 0) bubble(sx + 14, by - 60, c.bubble, c.bcol);
+  }
+  // Variação da moeda no último fechamento diário (preço do dia mostrado contra o do dia anterior).
+  function varMoeda(coin) {
+    const j = S.D && S.D.sy ? S.D.sy.indexOf(coin) : -1, d = S.dias[S.di], a = S.dias[S.di - 1];
+    if (j < 0 || !d || !a || !d.px || !a.px || !a.px[j] || d.px[j] == null) return null;
+    return d.px[j] / a.px[j] - 1;
   }
   function drawDesk(x, y, w, label, col) {
     box(x, y, w, 0.8, 26, "#3b4850", "#2b363c", "#323e45");
@@ -507,7 +531,14 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       ls.push({ txt: "⚠ " + sit.txt, col: sit.tom === "ruim" ? C.bad : C.warn, forte: true });
     } else if (onde === "mesa") {
       const fin = rotuloFinanceiro(x.res, S.periodo || "dia");
-      if (fin && S.aoVivo) ls.push({ txt: fin.txt, col: TOM_FIN[fin.tom], forte: true });
+      if (fin && S.aoVivo) {
+        ls.push({ txt: fin.txt, col: TOM_FIN[fin.tom], forte: true });
+        // Sem preço novo no dia: mostra também o acumulado, para o número e a porcentagem não sumirem.
+        if ((S.periodo || "dia") === "dia" && semPrecoNovo(x.res)) {
+          const ac = rotuloFinanceiro(x.res, "acumulado");
+          if (ac) ls.push({ txt: ac.txt, col: TOM_FIN[ac.tom], forte: true });
+        }
+      }
       else if (x.resultado != null) ls.push({ txt: pct(x.resultado), col: x.resultado > 0 ? C.good : x.resultado < 0 ? C.bad : C.muted, forte: true });
       if (x.posicoes && x.posicoes.length) ls.push({ txt: "comprado · " + curtoPos(x.posicoes), col: POS_COR });
     } else if (x.decisao && x.decisao.tipo === "vai") ls.push({ txt: "compra na próxima abertura", col: "#8fb0ff" });
