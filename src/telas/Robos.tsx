@@ -3,7 +3,7 @@ import { Button } from "../ui/affectui/button";
 import { fmt, pct } from "../dados/formato";
 import { TIPOS } from "../dados/detalhe";
 import {
-  ESTADOS, CAMPOS, TODOS, filtrar, filtroVazio, opcoes, contarEstados,
+  ESTADOS, ESTAGIO_LOTE, CAMPOS, TODOS, filtrar, filtroVazio, opcoes, contarEstados,
   type Entidade, type Estado, type Filtro, type Evento,
 } from "../dados/estados";
 
@@ -17,7 +17,7 @@ function lerFiltro(): Filtro {
   try { return { ...filtroVazio(), ...JSON.parse(localStorage.getItem(CHAVE) || "{}") }; } catch { return filtroVazio(); }
 }
 
-export function Robos({ lista, aoVivo }: { lista: Entidade[]; aoVivo: boolean }) {
+export function Robos({ lista, aoVivo, avisoLote }: { lista: Entidade[]; aoVivo: boolean; avisoLote?: string | null }) {
   const [f, setF] = useState<Filtro>(lerFiltro);
   const [aberto, setAberto] = useState<string | null>(null);
   useEffect(() => { try { localStorage.setItem(CHAVE, JSON.stringify(f)); } catch { /* sem memória do navegador, tudo bem */ } }, [f]);
@@ -57,6 +57,9 @@ export function Robos({ lista, aoVivo }: { lista: Entidade[]; aoVivo: boolean })
         </div>
 
         {!aoVivo && <p className="nota">Esta tela mostra sempre o ao vivo, mesmo quando o Pregão está num ensaio.</p>}
+        {avisoLote && vistos.some(x => x.estagio === ESTAGIO_LOTE) && (
+          <p className="nota nota-lote">Lote de robôs: {avisoLote} Cada robô tem seu próprio capital e sua moeda; os resultados nunca se somam.</p>
+        )}
         <p className="nota">{vistos.length} de {lista.length}. Verde e vermelho mostram só se ganhou ou perdeu até agora; não dizem se a estratégia é boa. Veja a amostra e o estágio.</p>
 
         <div className="robos-grade">
@@ -99,7 +102,12 @@ function Cartao({ x, ativo, abrir }: { x: Entidade; ativo: boolean; abrir: () =>
       </p>
       <p className="robo-motivo">{x.motivo}</p>
       {x.decisao && <p className="robo-decisao"><b>{TIPOS[x.decisao.tipo!].rotulo}</b> {x.decisao.txt.replace(/^não operou: /, "")}</p>}
-      {x.carteira?.fecha === false && <p className="robo-alerta">O caixa não fecha com o diário. Veja o detalhe.</p>}
+      {x.regua && x.resultado != null && x.regua.resultado != null && (
+        <p className="robo-regua">régua ({x.regua.nome}): <span className={tomRes(x.regua.resultado)}>{pct(x.regua.resultado)}</span>{" "}
+          <small className="muted">· {Math.abs(x.resultado - x.regua.resultado) < 0.0005 ? "igual à régua" : `${x.resultado > x.regua.resultado ? "acima" : "abaixo"} da régua por ${pct(Math.abs(x.resultado - x.regua.resultado)).replace(/^[+−-]/, "")}`}</small></p>
+      )}
+      {(x.alerta || x.carteira?.fecha === false) && <p className="robo-alerta">{x.alerta || "O caixa não fecha com o diário. Veja o detalhe."}</p>}
+      {x.veredito && <p className="robo-veredito" title={x.veredito}>{x.veredito}</p>}
       <p className="robo-rodape"><span>{x.amostra}</span>{x.ultima && <span>{x.ultima}</span>}</p>
     </button>
   );
@@ -122,6 +130,7 @@ function Detalhe({ x, fechar }: { x: Entidade; fechar: () => void }) {
     ["Valor agora", x.patrimonio != null ? dinheiro(x.patrimonio, x.moeda) : "—"],
     ["Resultado", x.resultado != null ? pct(x.resultado) : "—", tomRes(x.resultado)],
     ...(x.sombra != null ? [["Regra pura (sem freios)", pct(x.sombra)] as [string, string]] : []),
+    ...(x.regua ? [[`Régua: ${x.regua.nome}`, (x.regua.valor != null ? dinheiro(x.regua.valor, x.moeda) + " · " : "") + (x.regua.resultado != null ? pct(x.regua.resultado) : "—"), tomRes(x.regua.resultado)] as [string, string, string]] : []),
     ["Maior queda observada", x.quedaMax != null ? pct(x.quedaMax) : "—"],
     ["Custos pagos", x.custos != null ? dinheiro(x.custos, x.moeda === "BRL" ? "BRL" : x.moeda) : "não informado pela simulação"],
     ["Posições", x.posicoes.length ? x.posicoes.join(", ") : "nenhuma (em caixa)"],
@@ -141,6 +150,7 @@ function Detalhe({ x, fechar }: { x: Entidade; fechar: () => void }) {
         <p>{x.motivo}</p>
         <p className="muted pequeno">{ESTADOS[x.estado].explica}</p>
       </div>
+      {x.alerta && <p className="detalhe-alerta">{x.alerta}</p>}
       <dl className="detalhe-fatos">
         {fatos.map(([k, v, cls]) => <div key={k}><dt>{k}</dt><dd className={cls}>{v}</dd></div>)}
       </dl>
@@ -203,7 +213,7 @@ function Dinheiro({ x }: { x: Entidade }) {
 
 const FILTROS_LINHA: { k: string; rotulo: string; ok: (e: Evento) => boolean }[] = [
   { k: "tudo", rotulo: "Tudo", ok: () => true },
-  { k: "op", rotulo: "Operou", ok: e => e.tipo === "op" || (!e.tipo && e.tom !== "ruim") },
+  { k: "op", rotulo: "Operou", ok: e => e.tipo === "op" || e.tipo === "vai" || (!e.tipo && e.tom !== "ruim") },
   { k: "nao", rotulo: "Não operou", ok: e => e.tipo === "nao" },
   { k: "freio", rotulo: "Recusas e freios", ok: e => e.tipo === "rec" || e.tipo === "freio" || (!e.tipo && e.tom === "ruim") },
 ];

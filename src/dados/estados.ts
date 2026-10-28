@@ -3,6 +3,7 @@
 import type { Fonte } from "./formato";
 import type { Vizinhas, LinhaBolsa } from "./vizinhas";
 import type { Detalhes, DetalheRobo, EventoDetalhe, TipoEvento } from "./detalhe";
+import type { Lote, RoboLote } from "./lote";
 
 // Os estados que o salão mostra. "Aguardando mercado" e "falha de conexão" nunca se confundem (Plano 2.0 §17).
 export type Estado =
@@ -23,6 +24,7 @@ export const ESTADOS: Record<Estado, { rotulo: string; tom: Tom; explica: string
 
 export type Mercado = "Cripto" | "EUA" | "B3";
 export type Tipo = "robo" | "regua" | "carteira";
+export const ESTAGIO_LOTE = "Observação (lote)";
 export type Evento = { d: string; txt: string; tom?: "bom" | "ruim" | "neutro"; tipo?: TipoEvento; vezes?: number; desde?: string };
 // Dinheiro de um robô ou carteira. "real" = números do estado.json da VPS (linha robos:detalhe); senão, calculado.
 export type Conciliacao = {
@@ -43,6 +45,9 @@ export type Entidade = {
   linha: Evento[];
   carteira?: Conciliacao;
   decisao?: Evento | null;   // última decisão (operou, não operou ou recusada), quando a VPS manda o detalhe
+  regua?: { valor: number | null; resultado: number | null; nome: string } | null;  // "só segurar" o mesmo ativo, mesma moeda
+  alerta?: string | null;    // problema que não é situação (diário mexido, caixa que não fecha): aviso vermelho no cartão
+  veredito?: string | null;  // parecer do laboratório à vista no cartão (robôs de observação)
 };
 
 // Como está a ligação do painel com o n8n (vem do App).
@@ -55,7 +60,7 @@ export type Conexao =
 export type PregaoAgora = { aberto: boolean; texto: string } | null;
 
 export type Entrada = {
-  vivo: Fonte | null; viz: Vizinhas; agora: number; conexao: Conexao; detalhe?: Detalhes | null;
+  vivo: Fonte | null; viz: Vizinhas; agora: number; conexao: Conexao; detalhe?: Detalhes | null; lote?: Lote | null;
   pregao: { EUA: PregaoAgora; B3: PregaoAgora };
 };
 
@@ -67,6 +72,7 @@ export const PRAZO = {
   bolsa: 150,             // a bolsa confere de hora em hora (minuto 40)
   intradia: 20,           // o day trade roda de minuto em minuto
   carteiras: 26 * 60,     // as carteiras rodam uma vez por dia (22:50 UTC)
+  lote: 150,              // o lote de robôs roda de hora em hora (minuto 25)
 };
 
 const REGRA: Record<string, string> = {
@@ -311,12 +317,80 @@ export function conciliar(w: { valor_brl: number; quantidade: number; preco_atua
   return { capital: cap, caixa, reservado: 0, exposicao, fecha, nota };
 }
 
+// ---------- lote de robôs (lote-v1): observação, um capital e uma moeda por robô; nunca se somam ----------
+const MERCADO_LOTE: Record<string, Mercado> = { cripto: "Cripto", eua: "EUA", b3: "B3" };
+const HORIZONTE_LOTE: Record<string, string> = { diario: "Diário", "diário": "Diário", semanal: "Semanal", mensal: "Mensal" };
+const dinheiroTxt = (v: number, moeda: string) => moeda === "BRL" ? "R$ " + v.toFixed(2).replace(".", ",") : v.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " " + moeda;
+
+function lote(e: Entrada): Entidade[] {
+  const l = e.lote;
+  if (!l) return [];
+  return l.robos.map(r => {
+    const mercado = MERCADO_LOTE[r.mercado] || "Cripto";
+    const pg = mercado === "Cripto" ? null : e.pregao[mercado as "EUA" | "B3"] ?? null;
+    const fam = r.estrategia.replace(/-v\d+$/i, "");
+    const alvo = r.alvo.map(a => a.replace(/USDT$/, "")).join(", ") || r.id;
+    const ci = r.capital_insuficiente;
+    const ativ = r.atividade ? frase(r.atividade.replace(/^aguardando mercado: /, "").replace(/(\d{4})-(\d\d)-(\d\d)/g, (_, _a, m, d) => `${d}/${m}`)) : "";
+    const b = baseConexao(e.conexao, true)
+      || (l.botao_parar ? { estado: "parado" as Estado, motivo: frase(`Botão de parar do lote ligado: ${l.botao_parar}`) + " Só volta com ordem do Sebastian." } : null)
+      || situacao(r.situacao, r.motivo, false)
+      || velho(e.agora, l.gerado_em, l.relatorio_em, PRAZO.lote, "O relatório do lote")
+      || (r.situacao === "capital insuficiente" ? { estado: "sem-capital" as Estado, motivo: ci
+            ? frase(`${dinheiroTxt(ci.disponivel ?? r.capital, r.moeda)} não compram uma unidade de ${ci.ativo || alvo}` + (ci.preco != null ? ` a ${ci.preco.toLocaleString("pt-BR")}` : "") + (ci.capital_minimo_da_regra != null ? `; a regra precisaria de ${dinheiroTxt(ci.capital_minimo_da_regra, r.moeda)}` : ""))
+            : "O capital não dá para comprar nem uma unidade do ativo." } : null)
+      || (r.situacao === "aguardando dado" ? { estado: "aguardando-dado" as Estado, motivo: frase(r.atividade || "Sem o preço do dia") } : null)
+      || (r.situacao === "aguardando o primeiro fechamento" ? (pg && !pg.aberto
+            ? { estado: "aguardando-mercado" as Estado, motivo: `Ainda não começou: espera o primeiro fechamento. Bolsa fechada, ${abre(pg)}.` }
+            : { estado: "aguardando-dado" as Estado, motivo: "Ainda não começou: espera o primeiro fechamento para decidir." }) : null)
+      || (pg && !pg.aberto ? { estado: "aguardando-mercado" as Estado, motivo: `Bolsa fechada, ${abre(pg)}. ` + (r.situacao === "ativo, em caixa" ? "Em caixa." : `Comprado em ${Object.keys(r.posicoes).map(a => a.replace(/USDT$/, "")).join(", ") || alvo}.`) } : null)
+      || { estado: "ativo" as Estado, motivo: (pg ? "Pregão aberto. " : "") + (r.situacao === "ativo, em caixa" ? "Em caixa." : `Comprado em ${Object.keys(r.posicoes).map(a => a.replace(/USDT$/, "")).join(", ") || alvo}.`) + (ativ ? " " + ativ.charAt(0).toUpperCase() + ativ.slice(1) : "") };
+    const d = r.ultima_decisao;
+    // "vai operar" só quando a regra mandou comprar ou vender e o motor não avisou que não executa (pausa, parada, botão)
+    const opera = !!d && /^(comprar|vender)\b/i.test(d.texto) && !/\(não executa:/i.test(d.texto);
+    const decisao: Evento | null = d ? { d: d.dia || r.ultimo_pregao || "", tipo: opera ? "vai" : "nao", tom: "neutro",
+      txt: (opera ? "" : "não operou: ") + d.texto.replace(/^não operar: /, "") + (d.para ? ` (decidido no fechamento de ${dBR(d.dia || "")}, vale para ${dBR(d.para)})` : "") } : null;
+    const exposicao = r.valor != null && r.caixa != null ? r.valor - r.caixa : null;
+    const fecha = r.conciliacao === true;
+    const alertas = [
+      !l.diario_integro ? `O diário do lote não confere${l.diario_problema ? ` (${l.diario_problema})` : ""}. Peça ao Claude para olhar.` : null,
+      !fecha ? "O caixa não fecha com o diário. Veja o detalhe." : null,
+    ].filter(Boolean) as string[];
+    const posicoes = Object.entries(r.posicoes).map(([a, q]) => `${q.toLocaleString("pt-BR", { maximumFractionDigits: 8 })} ${a}`);
+    return {
+      id: "lote:" + r.id, tipo: "robo", nome: `${fam} · ${alvo}`, mercado, estrategia: fam, versao: r.estrategia + (l.versao ? ` · ${l.versao}` : ""),
+      horizonte: HORIZONTE_LOTE[r.horizonte.toLowerCase()] || r.horizonte, estagio: ESTAGIO_LOTE,
+      estado: b.estado, motivo: b.motivo,
+      ultima: r.ultimo_pregao ? `fechamento de ${dBR(r.ultimo_pregao)}` : null,
+      proxima: (ativ ? ativ.charAt(0).toUpperCase() + ativ.slice(1) + " " : "") + "O lote confere de hora em hora.",
+      moeda: r.moeda, capital: r.capital, patrimonio: r.valor, resultado: r.resultado, quedaMax: r.queda_maxima,
+      custos: r.custos != null ? r.custos + (r.imposto_pago ?? 0) : null, posicoes,
+      amostra: r.historico.length ? `${r.historico.length} ${r.historico.length === 1 ? "fechamento" : "fechamentos"}` + (r.inicio ? ` desde ${dBR(r.inicio)}` : "") : "nenhum fechamento ainda",
+      regra: `${r.estrategia} em ${alvo}. Execução: ${r.execucao || "—"}. ` + FREIOS,
+      dados: mercado === "Cripto" ? "Velas diárias públicas da Binance." : "Preços diários públicos do Yahoo" + (mercado === "B3" ? ", com dividendos e IR." : ", com dividendos."),
+      parecer: r.veredito, veredito: r.veredito, custoIA: SEM_IA,
+      regua: { valor: r.regua_valor, resultado: r.regua_resultado, nome: `só segurar ${alvo}` },
+      alerta: alertas.join(" ") || null,
+      decisao,
+      linha: [
+        ...(d ? [{ ...decisao!, d: d.dia || "" }] : []),
+        ...r.historico.slice(-20).reverse().map(([dia, v, rg]) => ({ d: dia, tipo: "info" as const,
+          txt: `fechou valendo ${dinheiroTxt(v, r.moeda)}` + (rg != null ? ` · régua ${dinheiroTxt(rg, r.moeda)}` : ""),
+          tom: (rg != null ? (v > rg ? "bom" : v < rg ? "ruim" : "neutro") : "neutro") as Evento["tom"] })),
+      ],
+      carteira: { capital: r.capital, caixa: r.caixa, reservado: 0, exposicao, fecha, moeda: r.moeda, real: true,
+        aPrecoDe: r.ultimo_pregao, pendente: d && d.para ? `${d.texto} (no pregão de ${dBR(d.para)})` : null,
+        nota: fecha ? "Fecha: o lote refez o caixa pelo diário e bateu com o estado." : `Não fecha: ${(r.conciliacao as string[]).join("; ")}` },
+    };
+  });
+}
+
 export function montarEntidades(e: Entrada): Entidade[] {
-  const todas = [...cripto(e), ...intradia(e), ...bolsa(e), ...carteiras(e)];
+  const todas = [...cripto(e), ...intradia(e), ...bolsa(e), ...carteiras(e), ...lote(e)];
   return e.detalhe ? todas.map(x => comDetalhe(x, e.detalhe!.robos[x.id])) : todas;
 }
 
-const TOM: Record<TipoEvento, Evento["tom"]> = { op: "neutro", nao: "neutro", rec: "ruim", freio: "ruim", info: "neutro" };
+const TOM: Record<TipoEvento, Evento["tom"]> = { op: "neutro", vai: "neutro", nao: "neutro", rec: "ruim", freio: "ruim", info: "neutro" };
 const evento = (x: EventoDetalhe): Evento => ({ d: x.em, txt: x.txt, tom: x.tipo === "freio" && /voltou|retomada|encerrada/.test(x.txt) ? "bom" : TOM[x.tipo], tipo: x.tipo, vezes: x.vezes, desde: x.desde });
 
 // Junta o detalhe da VPS: linha do tempo com as decisões de não operar, custos reais, caixa e conciliação.
@@ -324,7 +398,7 @@ const evento = (x: EventoDetalhe): Evento => ({ d: x.em, txt: x.txt, tom: x.tipo
 export function comDetalhe(x: Entidade, d: DetalheRobo | undefined): Entidade {
   if (!d) return x;
   const linha = d.linha.length ? d.linha.map(evento).reverse() : x.linha;
-  const decisao = [...d.linha].reverse().find(v => v.tipo === "op" || v.tipo === "nao" || v.tipo === "rec");
+  const decisao = [...d.linha].reverse().find(v => v.tipo === "op" || v.tipo === "vai" || v.tipo === "nao" || v.tipo === "rec");
   const carteira: Conciliacao = {
     capital: x.capital, caixa: d.caixa, reservado: d.reservado, exposicao: d.exposicao,
     fecha: d.conciliacao.fecha, nota: d.conciliacao.nota, moeda: d.moeda || x.moeda, real: true,

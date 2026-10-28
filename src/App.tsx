@@ -11,6 +11,7 @@ import { Fabrica } from "./telas/Fabrica";
 import { fabricaDeLinhas, fabricaDoLab, type Fabrica as QuadroFabrica } from "./dados/fabrica";
 import { montarEntidades, type Conexao } from "./dados/estados";
 import { detalheDeLinhas, type Detalhes } from "./dados/detalhe";
+import { loteDeLinhas, type Lote } from "./dados/lote";
 import { Contas } from "./telas/Contas";
 import { Diario } from "./telas/Diario";
 import { Ajustes } from "./telas/Ajustes";
@@ -45,6 +46,7 @@ export function App() {
   const [ultimaOk, setUltimaOk] = useState<string | null>(null);
   const [fab, setFab] = useState<QuadroFabrica | null>(null);
   const [detalhe, setDetalhe] = useState<Detalhes | null>(null);
+  const [lote, setLote] = useState<Lote | null>(null);
   // Relógio de minuto em minuto, para "dado velho" e "aguardando mercado" mudarem sozinhos.
   const [agora, setAgora] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 60000); return () => clearInterval(t); }, []);
@@ -68,6 +70,7 @@ export function App() {
     setUltimaOk(r.lidoEm);
     setFab(fabricaDeLinhas(r.linhas));
     setDetalhe(detalheDeLinhas(r.linhas));
+    setLote(loteDeLinhas(r.linhas));
     setAgora(Date.now());
     const v = deLinhas(r.linhas);
     // Tabela ainda vazia: a VPS não mandou o primeiro resumo.
@@ -105,9 +108,9 @@ export function App() {
   const conexao: Conexao = info.estado === "erro" ? { estado: "erro", msg: info.msg, ultimaOk }
     : info.estado === "ok" ? { estado: "ok", lidoEm: info.lidoEm } : { estado: info.estado };
   const entidades = useMemo(() => montarEntidades({
-    vivo, viz, agora, conexao, detalhe,
+    vivo, viz, agora, conexao, detalhe, lote,
     pregao: { EUA: ex.aoVivo ? pregao(ex.spy, agora) : null, B3: ex.aoVivo ? pregao(ex.bova, agora) : null },
-  }), [vivo, viz, agora, info, ultimaOk, ex, detalhe]); // eslint-disable-line react-hooks/exhaustive-deps
+  }), [vivo, viz, agora, info, ultimaOk, ex, detalhe, lote]); // eslint-disable-line react-hooks/exhaustive-deps
   const quadro = useMemo(() => fab || fabricaDoLab(ex.lab), [fab, ex]);
   const alertas = entidades.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado").length;
 
@@ -161,7 +164,7 @@ export function App() {
             info={info} vivo={vivo} ex={ex} entidades={entidades} verRobos={() => setAba("robos")}
           />
         )}
-        {aba === "robos" && <Robos lista={entidades} aoVivo={base === "aovivo"} />}
+        {aba === "robos" && <Robos lista={entidades} aoVivo={base === "aovivo"} avisoLote={lote ? (lote.aviso_geral || "Os robôs do lote são observação.") : null} />}
         {aba === "fabrica" && <Fabrica f={quadro} />}
         {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} viz={viz} />}
         {aba === "diario" && <Diario dias={dias} di={diSeguro} />}

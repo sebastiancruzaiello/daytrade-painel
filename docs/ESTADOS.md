@@ -49,6 +49,7 @@ Cada entrada da linha do tempo tem um selo:
 | Selo | Quer dizer |
 |---|---|
 | operou | Ordem executada, com o custo pago naquela ordem. |
+| vai operar | A regra mandou comprar ou vender no fechamento e a ordem sai na próxima abertura (lote de robôs). Se o motor avisou que não executa (pausa, parada, botão), vira "não operou". |
 | não operou | O robô olhou e decidiu não mandar ordem. O motivo vem da regra, com os números do dia. Exemplos: "a regra manda seguir comprado e já estava", "o momentum só escolhe às segundas", "checagem das 11:00: preço abaixo do teto", "R$ 100 não compram 1 BOVA11". Dias seguidos com a mesma decisão viram uma linha só ("30 vezes desde 02/09"). |
 | recusada | O robô quis operar e o motor de risco recusou. Exemplos: dia de FOMC, preço velho, limite de ordens. |
 | freio | Motor de risco ou botão: pausou, parou, zerou, voltou. |
@@ -66,6 +67,34 @@ Na ficha aparecem a **última decisão** (logo abaixo da situação) e o quadro 
   - Na régua, que compra uma vez e não registra ordem no diário, aparece "não se aplica".
 
 Sem a linha `robos:detalhe`, tudo continua como antes. A linha do tempo é a do resumo e o caixa da carteira é calculado.
+
+## Lote de robôs (0.1.11, linha `lote:resumo`)
+
+O lote (lote-v1) roda 9 robôs pequenos de **observação**, cada um com o capital e a moeda dele. As regras foram
+reprovadas no laboratório, então os robôs servem para observar e não aprovam nada. Eles aparecem na tela Robôs
+com o estágio "Observação (lote)" e uma faixa amarela explicando isso.
+
+Cada cartão mostra:
+- o veredito do laboratório, à vista;
+- o resultado ao lado da **régua** (só segurar o mesmo ativo, na mesma moeda);
+- a última decisão, inclusive "não operou".
+
+Os robôs **nunca se somam**.
+
+Como cada situação do lote vira situação do painel, na mesma ordem de prioridade de cima:
+
+| No lote | No painel |
+|---|---|
+| parado (botão de parar) | Parado |
+| parada / pausada | Parado / Pausado (com o motivo do motor de risco) |
+| relatório sem se renovar há mais de 2h30 (o lote roda de hora em hora) | Dado velho |
+| capital insuficiente | Capital insuficiente (quanto tem, quanto custa uma unidade, quanto a regra precisaria) |
+| aguardando dado | Aguardando dado |
+| aguardando o primeiro fechamento | Aguardando mercado, se a bolsa está fechada; senão, aguardando dado |
+| ativo / ativo, em caixa | Aguardando mercado (EUA ou B3 fechada) ou Ativo |
+
+Dois avisos vermelhos aparecem no cartão sem mudar a situação: o diário do lote que não confere e o caixa que não fecha
+com o diário. A conciliação é a do próprio lote.
 
 ## O que ainda não vem da VPS
 
