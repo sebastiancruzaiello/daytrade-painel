@@ -50,6 +50,16 @@ escritório, sem cadeira escrita à mão. Quem a VPS diz que existe e não chego
 telemetria", e a coluna da direita mostra esperados, recebidos e desenhados. O rodapé mostra a versão do programa,
 de onde vêm os números e a hora da última leitura e do último envio da VPS. Detalhes em `docs/ESTADOS.md`.
 
+## Escritório operacional
+
+Desde a 0.1.14 o Pregão abre com a **faixa de prontidão**: relógio de Brasília e de Nova York, o escritório
+(preparação das 8h30 às 8h55, pronto às 9h de Brasília) e a fase de cada mercado no horário dele (B3 ações, B3 ETFs,
+EUA na hora de Nova York, cripto contínuo), com os impedimentos do checklist da VPS. Acima de cada operador com conta
+aparece o ganho ou a perda em verde ou vermelho, com a moeda e o período (Dia ou Acumulado, escolhido na faixa); aporte
+nunca vira lucro. Os agentes de IA e o apoio mostram a última tarefa com prova, ou "aguardando agenda" quando não há
+prova. A tela Robôs ganha as cinco dimensões de cada operador e o inventário aprovado × instalado × enviado × desenhado.
+Lê três linhas novas do exportador (`prontidao:resumo`, `agentes:resumo`, `resultado:resumo`). Detalhes em `docs/ESTADOS.md`.
+
 ## Desenvolver
 
     npm ci

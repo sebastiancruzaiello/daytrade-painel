@@ -6,6 +6,7 @@ import { segurar, pregao, idxAte } from "../dados/mercados";
 import { criarCamera } from "./camera";
 import { planta, ALA } from "../dados/elenco";
 import { ESTADOS } from "../dados/estados";
+import { rotuloFinanceiro, rotuloSituacao } from "../dados/escritorio";
 
 const FONT = '"Chakra Petch", "Segoe UI", sans-serif';
 // O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22; a ala dos robôs, gerada da lista de
@@ -24,8 +25,10 @@ const LOUNGE = [[1.3, 8.4], [4.2, 8.6], [1.5, 9.9], [4.3, 10.0], [1.4, 10.5], [2
 const OUT = [-0.8, 10.25];
 const GUARD = { x: 10.3, y: 2.4 };
 
-export type Cena = { mostrar: (s: EstadoCena) => void; destruir: () => void; mais: () => void; menos: () => void; inicio: () => void; selecionar: (id: string | null) => void };
-export type EstadoCena = { D: any; dias: any[]; di: number; pararTeste: boolean; vivo: any | null; aoVivo: boolean; ex: any; entidades: any[] };
+export type Area = "tudo" | "cripto" | "acoes" | "robos" | "apoio";
+export type Cena = { mostrar: (s: EstadoCena) => void; destruir: () => void; mais: () => void; menos: () => void; inicio: () => void; selecionar: (id: string | null) => void; focar: (a: Area) => void };
+// periodo: "dia" ou "acumulado" (rótulo de ganho/perda); atividades: o que cada agente ou apoio comprovadamente fez.
+export type EstadoCena = { D: any; dias: any[]; di: number; pararTeste: boolean; vivo: any | null; aoVivo: boolean; ex: any; entidades: any[]; periodo?: string; atividades?: Record<string, { txt: string; tom: string }> };
 
 // Ids das pessoas: "robo:<conta>:<cadeira>", "staff:escrivao", "staff:guardiao", "agente:<nome>", "ref:SPY", "ref:BOVA11",
 // "robo:guardiao-dados", "robo:coletor-clima", "robo:coletor-mercados", "robo:organizador",
@@ -108,6 +111,10 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   // Nome no pé de cada boneco: pequeno e desenhado por cima de tudo no fim do quadro, para nada tampar.
   let nomes = [];
   const nome = (id, sx, sy, txt, col) => nomes.push({ id, sx, sy, txt, col });
+  // Rótulos acima da cabeça (ganho/perda, situação, atividade): também no fim do quadro e sem se cobrir.
+  // Cada pessoa tem um bloco só (as linhas dela andam juntas); "y" é a base do bloco, logo acima da cabeça.
+  let rotulos = [];
+  const rotulo = (sx, y, linhas) => { if (linhas.length) rotulos.push({ sx, y, linhas }); };
   // Placas das áreas (ALA EUA, ALA B3, SALA DE APOIO): no chão, mas desenhadas junto com os nomes para nada cobrir.
   const PLACAS = [[21.3, 0.55, "SALA DE APOIO", C.muted], [12.9, 5.6, "ALA EUA ↑", AZUL], [12.9, 6.4, "ALA B3 ↓", AZUL]];
   let placasAla = [];
@@ -118,6 +125,35 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       const [px, py] = P(x, y); g.font = `700 9.5px ${FONT}`; const w = g.measureText(txt).width + 10;
       g.fillStyle = "rgba(10,14,16,.6)"; roundRect(px - w / 2, py - 8, w, 14, 3); g.fill();
       g.fillStyle = col; g.fillText(txt, px, py + 2); usados.push({ x: px - w / 2, y: py - 8, w, h: 14 });
+    });
+    // Rótulos acima das cabeças: quem está mais à frente escolhe primeiro. Se o bloco bater em outro, tenta subir
+    // e ir para os lados; quando sai do lugar, um fio liga o bloco à cabeça, para nunca ficar na pessoa errada.
+    const fonte = (l) => `${l.forte ? 700 : 600} ${l.forte ? 10.5 : 9.5}px ${FONT}`;
+    [...rotulos].sort((a, b) => b.y - a.y).forEach(r => {
+      const ls = r.linhas.map(l => { g.font = fonte(l); return { ...l, w: g.measureText(l.txt).width + 8, h: l.forte ? 14 : 13 }; });
+      const w = Math.max(...ls.map(l => l.w)), h = ls.reduce((a, l) => a + l.h + 1, -1);
+      let pos = null;
+      for (const dy of [0, -1, -2]) {
+        for (const dx of [0, 0.55, -0.55, 1.1, -1.1]) {
+          const c = { x: r.sx + dx * w - w / 2, y: r.y - h + dy * (h + 2), w, h };
+          if (!bate(c)) { pos = c; break; }
+        }
+        if (pos) break;
+      }
+      pos = pos || { x: r.sx - w / 2, y: r.y - h - 2 * (h + 2), w, h };
+      usados.push(pos);
+      const cx = pos.x + w / 2;
+      if (Math.abs(cx - r.sx) > 1 || pos.y + h < r.y - 1) {
+        g.strokeStyle = "rgba(201,209,205,.45)"; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(cx, pos.y + h); g.lineTo(r.sx, r.y + 4); g.stroke();
+      }
+      let y = pos.y;
+      ls.forEach(l => {
+        g.font = fonte(l);
+        g.fillStyle = "rgba(10,14,16,.86)"; roundRect(cx - l.w / 2, y, l.w, l.h, 3); g.fill();
+        g.fillStyle = l.col; g.fillText(l.txt, cx, y + l.h - 3.5);
+        y += l.h + 1;
+      });
     });
     // Quem está mais à frente escolhe primeiro; se o nome bater em outro, desce um degrau (até dois).
     g.font = `600 9.5px ${FONT}`;
@@ -146,7 +182,8 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
         if (st === "parada") { c.mode = "sair"; c.tx = OUT[0]; c.ty = OUT[1]; }
         else {
           if (c.gone) { c.gone = false; c.x = OUT[0]; c.y = OUT[1]; }
-          if (holding && st === "ativa") { c.mode = "mesa"; c.tx = c.seat.x; c.ty = c.seat.y; c.coin = coin; }
+          // Em caixa também fica no posto, monitorando: o café não é lugar de quem está trabalhando (28/10/2026).
+          if (st === "ativa" && (holding || aoVivo || k !== "momentum")) { c.mode = "mesa"; c.tx = c.seat.x; c.ty = c.seat.y; c.coin = holding || k !== "momentum" ? coin : null; }
           else { if (c.mode !== "lounge") { const s = LOUNGE[(KS.indexOf(k) * 3 + i) % 7]; c.tx = s[0]; c.ty = s[1]; } c.mode = "lounge"; c.coin = k === "momentum" ? null : coin; }
         }
       });
@@ -178,6 +215,8 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.fillStyle = "#2a2320"; g.beginPath(); g.arc(sx, by - 29, 8.2, Math.PI * 1.02, Math.PI * 1.98); g.fill();
     if (sit) { g.fillStyle = "#2a2320"; g.beginPath(); g.arc(sx, by - 27, 8.2, Math.PI * 1.1, Math.PI * 1.9, true); g.fill(); }
     nome(`robo:${c.conta}:${c.i}`, sx, sy, c.conta === "momentum" ? "Momentum " + (c.i + 1) : NOME[c.conta], col);
+    // Ao vivo, ganho/perda da conta inteira só na primeira cadeira (as três do Momentum são a mesma conta).
+    if (S.aoVivo && c.i === 0) { const x = (S.entidades || []).find(e => e.id === "cripto:" + c.conta); if (x) rotulosDe(x, sx, by); }
     if (c.bubble && c.bt > 0) bubble(sx + 14, by - 60, c.bubble, c.bcol);
   }
   function drawDesk(x, y, w, label, col) {
@@ -279,8 +318,15 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       g.fillStyle = s.cor; roundRect(sx - 9, sy - 36, 18, 22, 6); g.fill();
       g.fillStyle = "#e9c9a8"; g.beginPath(); g.arc(sx, sy - 43, 8, 0, 7); g.fill();
       g.fillStyle = "#3a2c22"; g.beginPath(); g.arc(sx, sy - 45, 8.2, Math.PI, 0); g.fill();
+      atividadeDe(s.id, sx, sy - 58);
       nome(s.id, sx, sy, s.nome, s.anda ? C.staff : s.cor);
     });
+  }
+
+  // Agentes e apoio: o que comprovadamente fizeram (sem lucro: eles não têm conta). Sem prova, diz "sem registro".
+  function atividadeDe(id, sx, y) {
+    const a = S.atividades && S.atividades[id];
+    if (a && S.aoVivo) rotulo(sx, y, [{ txt: a.txt, col: TOM_COR[a.tom] || C.muted }]);
   }
 
   /* ---------- ala de ações (EUA e B3): só referências, laboratório e equipe de apoio ---------- */
@@ -390,16 +436,18 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       } });
       objs.push({ k: 18.6 + a.y + 1.5 + 0.3, f: () => {
         const ag = a.agente, [sx, sy] = P(18.6, a.y + 1.5); anel(ag.id, sx, sy);
-        figura(sx, sy, ag.cor, { sentado: true, t, fase: n + 2 });
+        const by = figura(sx, sy, ag.cor, { sentado: true, t, fase: n + 2 });
+        atividadeDe(ag.id, sx, by - 36);
         nome(ag.id, sx, sy, ag.nome, ag.cor);
       } });
     });
     objs.push({ k: 20.3 + 1, f: () => box(20.05, 0.9, 0.4, 10.4, 24, "#33404a", "#252f36", "#2c373f") });
     APOIO.forEach((p, n) => objs.push({ k: p.x + p.y + 0.3, f: () => {
       const [sx, sy] = P(p.x, p.y); anel(p.id, sx, sy);
-      figura(sx, sy, p.cor, { t, fase: n });
+      const by = figura(sx, sy, p.cor, { t, fase: n });
       const gd = ex.guardiao, alerta = p.id === "robo:guardiao-dados" && gd && gd.nivel !== "ok";
       if (alerta) tag(sx, sy - 58, "!", gd.nivel === "falha" ? C.bad : C.warn);
+      else atividadeDe(p.id, sx, by - 36);
       nome(p.id, sx, sy, p.nome, p.cor);
     } }));
   }
@@ -412,21 +460,29 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   function plantaDe(lista) { if (lista !== entPlanta) { entPlanta = lista; plantaAtual = planta(lista || []); } return plantaAtual; }
   const curtoNome = (t) => t.length > 15 ? t.slice(0, 14) + "…" : t;
   function tagP(x, y, txt, col) { g.font = `700 9px ${FONT}`; const w = g.measureText(txt).width + 8; g.fillStyle = "rgba(10,14,16,.85)"; roundRect(x - w / 2, y - 10, w, 13, 3); g.fill(); g.fillStyle = col; g.textAlign = "center"; g.fillText(txt, x, y); g.textAlign = "left"; }
+  const TOM_FIN = { bom: C.good, ruim: C.bad, neutro: "#c9d1cd", aviso: C.warn };
+  // Acima da cabeça, em duas linhas: o ganho/perda do período (verde, vermelho ou neutro, com sinal e moeda) e a
+  // situação (comprado, em caixa, monitorando, sem dado...). A cor do dinheiro nunca é a cor da saúde.
+  // compacto (ala dos robôs, onde a fila é apertada): a situação só aparece quando pede atenção; o resto fica na ficha.
+  function rotulosDe(x, sx, by, compacto = false) {
+    const fin = rotuloFinanceiro(x.res, S.periodo || "dia");
+    const sit = x.dim ? rotuloSituacao(x, x.dim) : null;
+    const ls = [];
+    if (fin && S.aoVivo) ls.push({ txt: fin.txt, col: TOM_FIN[fin.tom], forte: true });
+    else if (!sit && x.resultado != null) ls.push({ txt: pct(x.resultado), col: x.resultado > 0 ? C.good : x.resultado < 0 ? C.bad : C.muted });
+    if (sit && (!compacto || !ls.length || sit.tom === "ruim" || sit.tom === "aviso")) ls.push({ txt: sit.txt, col: TOM_COR[sit.tom] || C.muted });
+    rotulo(sx, by - 38, ls);
+  }
   function drawEntidade(x, l, t, n) {
     const id = "ent:" + x.id, [sx, sy] = P(l.x, l.y);
     anel(id, sx, sy);
-    const est = ESTADOS[x.estado] || ESTADOS["aguardando-dado"];
-    // Sentado = comprado e rodando; em pé = em caixa ou esperando; apagado = parado, sem conexão ou sem telemetria.
-    const sentado = x.estado === "ativo" && x.posicoes && x.posicoes.length > 0;
+    // Sentado no posto = trabalhando (monitorando, em caixa ou comprado). Apagado = parado, sem conexão ou sem
+    // telemetria: continua visível e identificável, nunca vai para o café.
     const apagado = !!x.semTelemetria || x.estado === "parado" || x.estado === "falha-conexao";
     const cor = COR_MERCADO[x.mercado] || C.accent;
-    const by = figura(sx, sy, x.tipo === "robo" ? cor : "#8a949c", { sentado, apagado, t, fase: n * 0.7 });
+    const by = figura(sx, sy, x.tipo === "robo" ? cor : "#8a949c", { sentado: !apagado, apagado, t, fase: n * 0.7 });
     if (x.tipo !== "robo") { g.fillStyle = cor; g.fillRect(sx - 9, by - 13, 18, 3); }  // régua ou carteira: faixa na cor do mercado
-    const curto = x.semTelemetria ? "sem dado" : CURTO_ESTADO[x.estado];
-    const r = x.resultado;
-    // Rodando: o resultado em verde ou vermelho. Fora disso: a situação, na cor dela (o resultado fica na ficha).
-    if (curto) tagP(sx, by - 42, curto, TOM_COR[est.tom]);
-    else if (r != null) tagP(sx, by - 42, pct(r), r > 0 ? C.good : r < 0 ? C.bad : C.muted);
+    rotulosDe(x, sx, by, true);
     nome(id, sx, sy, curtoNome(x.nome), x.tipo === "robo" ? cor : "#b9c2c8");
   }
   // Desenhada depois do resto (fica à direita e na frente): por fileira, primeiro a mesa, depois quem senta nela.
@@ -460,7 +516,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#0b0f12"; g.fillRect(0, 0, cv.width, cv.height);
     camera.aplicar(g, DPR(), dt);
     floor(); walls(); drawTelao(); drawShelf(); drawQuadroLab();
-    nomes = [];
+    nomes = []; rotulos = [];
     const d = S.dias[S.di];
     const objs = [];
     objs.push({ k: 6.9, f: () => drawDesk(2.2, 4.2, 3.2, "MESA MM20", C.accent) });
@@ -511,6 +567,11 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     menos: () => camera.menos(),
     inicio: () => camera.inicio(),
     selecionar: (id) => { selecionado = id; },
+    // Foco por área: um clique leva a câmera para o mercado ou a equipe, com zoom de leitura.
+    focar(a) {
+      const alvo = { cripto: [P(5.2, 6.0), 1.9], acoes: [P(16.5, 5.6), 2.0], robos: [P(28.3, 6.2), 1.9], apoio: [P(20.6, 5.8), 2.4] }[a];
+      if (!alvo) camera.inicio(); else camera.ir(alvo[0][0], alvo[0][1] - 30, alvo[1]);
+    },
     mostrar(s) {
       const mudou = !S || S.di !== s.di || S.dias !== s.dias || S.pararTeste !== s.pararTeste;
       S = s;

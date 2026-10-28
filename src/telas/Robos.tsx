@@ -6,6 +6,7 @@ import {
   ESTADOS, ESTAGIO_LOTE, CAMPOS, TODOS, filtrar, filtroVazio, opcoes, contarEstados,
   type Entidade, type Estado, type Filtro, type Evento,
 } from "../dados/estados";
+import { rotuloFinanceiro, comSinal, dinheiro as dinheiroMoeda, type Prontidao, type Periodo } from "../dados/escritorio";
 
 // Todos os robôs, réguas e carteiras ao vivo, com filtros e a ficha completa de cada um. Só olha.
 const ROTULO_CAMPO: Record<typeof CAMPOS[number], string> = {
@@ -17,7 +18,7 @@ function lerFiltro(): Filtro {
   try { return { ...filtroVazio(), ...JSON.parse(localStorage.getItem(CHAVE) || "{}") }; } catch { return filtroVazio(); }
 }
 
-export function Robos({ lista, aoVivo, avisoLote }: { lista: Entidade[]; aoVivo: boolean; avisoLote?: string | null }) {
+export function Robos({ lista, aoVivo, avisoLote, pront, periodo = "dia" }: { lista: Entidade[]; aoVivo: boolean; avisoLote?: string | null; pront?: Prontidao | null; periodo?: Periodo }) {
   const [f, setF] = useState<Filtro>(lerFiltro);
   const [aberto, setAberto] = useState<string | null>(null);
   useEffect(() => { try { localStorage.setItem(CHAVE, JSON.stringify(f)); } catch { /* sem memória do navegador, tudo bem */ } }, [f]);
@@ -63,9 +64,11 @@ export function Robos({ lista, aoVivo, avisoLote }: { lista: Entidade[]; aoVivo:
         <p className="nota">{vistos.length} de {lista.length}. Verde e vermelho mostram só se ganhou ou perdeu até agora; não dizem se a estratégia é boa. Veja a amostra e o estágio.</p>
 
         <div className="robos-grade">
-          {vistos.map(x => <Cartao key={x.id} x={x} ativo={x.id === aberto} abrir={() => setAberto(a => a === x.id ? null : x.id)} />)}
+          {vistos.map(x => <Cartao key={x.id} x={x} periodo={periodo} ativo={x.id === aberto} abrir={() => setAberto(a => a === x.id ? null : x.id)} />)}
           {!vistos.length && <p className="nota">Nenhum com esses filtros.</p>}
         </div>
+
+        <Inventario pront={pront || null} lista={lista} />
 
         <details className="glossario">
           <summary>O que cada situação quer dizer</summary>
@@ -89,13 +92,16 @@ function Pilula({ e }: { e: Estado }) {
 const dinheiro = (v: number, moeda: string) => (moeda === "BRL" ? "R$ " + fmt(v, 2) : fmt(v) + " " + moeda);
 const tomRes = (r: number | null) => r == null ? "" : r > 0 ? "up" : r < 0 ? "dn" : "";
 
-function Cartao({ x, ativo, abrir }: { x: Entidade; ativo: boolean; abrir: () => void }) {
+function Cartao({ x, ativo, abrir, periodo }: { x: Entidade; ativo: boolean; abrir: () => void; periodo: Periodo }) {
+  const fin = rotuloFinanceiro(x.res, periodo);
   return (
     <button type="button" className={"robo-cartao" + (ativo ? " aberto" : "")} onClick={abrir} aria-expanded={ativo}>
       <header>
         <span className="robo-nome">{x.nome}</span>
         <Pilula e={x.estado} />
       </header>
+      {fin && <p className={"robo-fin fin-" + fin.tom} title={fin.nota}>{fin.txt}</p>}
+      {x.dim && <p className="muted pequeno">{x.dim.atividade} · {x.dim.posicao}</p>}
       <p className="robo-tags">{x.mercado} · {x.estrategia} · {x.horizonte} · {x.estagio}</p>
       <p className="robo-numero">
         {x.patrimonio != null ? <>{dinheiro(x.patrimonio, x.moeda)} <small className={tomRes(x.resultado)}>{x.resultado != null ? pct(x.resultado) : ""}</small></> : <small className="muted">{x.semTelemetria ? "sem telemetria" : "sem número ainda"}</small>}
@@ -152,6 +158,21 @@ export function DetalheEntidade({ x, fechar }: { x: Entidade; fechar: () => void
         <p className="muted pequeno">{ESTADOS[x.estado].explica}</p>
       </div>
       {x.alerta && <p className="detalhe-alerta">{x.alerta}</p>}
+      {x.dim && (
+        <>
+          <h3>Cinco dimensões, separadas</h3>
+          <dl className="detalhe-fatos">
+            <div><dt>Mercado</dt><dd>{x.dim.mercado}</dd></div>
+            <div><dt>Saúde operacional</dt><dd className={x.dim.tomSaude === "ok" ? "ok" : x.dim.tomSaude === "ruim" ? "ruim" : ""}>{x.dim.saude}</dd></div>
+            <div><dt>Atividade</dt><dd>{x.dim.atividade}</dd></div>
+            <div><dt>Posição</dt><dd>{x.dim.posicao}</dd></div>
+            <div><dt>Estágio de validação</dt><dd>{x.dim.estagio}</dd></div>
+            {x.dim.modo && <div><dt>Como roda</dt><dd>{x.dim.modo}</dd></div>}
+          </dl>
+          <p className="muted pequeno">A cor do dinheiro não é a cor da saúde: um robô pode estar saudável e perdendo, ou com lucro antigo e desconectado.</p>
+        </>
+      )}
+      {x.res && <Resultado x={x} />}
       <dl className="detalhe-fatos">
         {fatos.map(([k, v, cls]) => <div key={k}><dt>{k}</dt><dd className={cls}>{v}</dd></div>)}
       </dl>
@@ -249,5 +270,51 @@ function LinhaDoTempo({ linha }: { linha: Evento[] }) {
         {!vistos.length && <li className="muted">Nada desse tipo nos registros recentes.</li>}
       </ul>
     </>
+  );
+}
+
+// Ganho e perda na moeda da conta: do dia (meia-noite de Brasília) e acumulado, com o aporte separado.
+function Resultado({ x }: { x: Entidade }) {
+  const r = x.res!;
+  const v = (n: number | null) => n == null ? "—" : comSinal(n, r.moeda);
+  const cls = (n: number | null) => n == null ? "muted" : n > 0 ? "up" : n < 0 ? "dn" : "";
+  return (
+    <>
+      <h3>Ganho e perda ({r.moeda})</h3>
+      <dl className="detalhe-fatos">
+        <div><dt>Hoje (desde 0h de Brasília)</dt><dd className={cls(r.dia)}>{v(r.dia)}</dd></div>
+        <div><dt>Acumulado</dt><dd className={cls(r.acumulado)}>{v(r.acumulado)}</dd></div>
+        <div><dt>Capital (com aportes)</dt><dd>{r.capital != null ? dinheiroMoeda(r.capital, r.moeda) : "—"}</dd></div>
+        {r.aporte_dia ? <div><dt>Aporte hoje</dt><dd>{dinheiroMoeda(r.aporte_dia, r.moeda)} · não é lucro</dd></div> : null}
+        <div><dt>Começo do dia</dt><dd>{r.base_dia != null ? dinheiroMoeda(r.base_dia, r.moeda) : "—"} <small className="muted">({r.base_origem || "sem base"})</small></dd></div>
+        <div><dt>Realizado × não realizado</dt><dd className="muted">ainda não disponível: a simulação não separa os dois neste relatório</dd></div>
+      </dl>
+      {r.sem_marcacao && <p className="detalhe-alerta">Sem marcação: {r.sem_marcacao}. O número não é inventado.</p>}
+      <p className="muted pequeno">Dia = valor agora − valor no começo do dia − aporte do dia. Acumulado = valor agora − capital. Custos já saíram do caixa e não são descontados de novo. Moedas diferentes nunca se somam.</p>
+    </>
+  );
+}
+
+// Inventário: aprovado (repositório + catálogo) → instalado (VPS) → em dia → no cron → enviado → desenhado.
+function Inventario({ pront, lista }: { pront: Prontidao | null; lista: Entidade[] }) {
+  if (!pront) return <p className="nota">Inventário: a VPS ainda não manda a linha de prontidão (versão do exportador anterior a 28/10/2026).</p>;
+  const naLista = new Set(lista.filter(x => !x.semTelemetria).map(x => x.id));
+  const sim = (b: boolean | null) => b == null ? "—" : b ? "sim" : "não";
+  const ops = pront.inventario.operadores;
+  const pend = ops.filter(o => o.situacao !== "ok").length;
+  return (
+    <details className="glossario inventario" open={pend > 0}>
+      <summary>Inventário: {ops.length} operadores aprovados ou instalados · {pend} com pendência</summary>
+      <p className="muted pequeno">Fonte do "aprovado": {pront.inventario.fonte_aprovado}. Um aprovado que não foi achado continua aqui; a lista nunca encolhe para caber no que chegou.</p>
+      <div className="inv-tabela" role="table">
+        <div role="row" className="inv-cab"><span>Id</span><span>Aprovado</span><span>Instalado</span><span>Em dia</span><span>No cron</span><span>Enviado</span><span>Na tela</span><span>Situação</span></div>
+        {ops.map(o => (
+          <div role="row" key={o.id} className={o.situacao === "ok" ? "" : "inv-pend"} title={o.modo}>
+            <span>{o.id}</span><span>{sim(o.aprovado)}</span><span>{sim(o.instalado)}</span><span>{sim(o.processo_em_dia)}</span>
+            <span>{sim(o.no_cron)}</span><span>{sim(o.enviado)}</span><span>{naLista.has(o.id) ? "sim" : "não"}</span><span>{o.situacao}</span>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }

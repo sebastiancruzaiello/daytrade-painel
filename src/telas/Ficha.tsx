@@ -2,6 +2,7 @@ import { ChangeSummary, type MetricChange } from "../ui/affectui/change-summary"
 import { Button } from "../ui/affectui/button";
 import { KS, NOME, COR, REF, fmt, pct, dBR, hora, resumoConta, type Fonte } from "../dados/formato";
 import { segurar, pregao, type Extras, type Mercado, type LabMercado } from "../dados/mercados";
+import type { Atividade } from "../dados/escritorio";
 
 // Ficha de quem foi clicado no salão. Só mostra: nada aqui muda a simulação.
 const ESTRATEGIA: Record<string, string> = {
@@ -53,12 +54,19 @@ const AGENTES: Record<string, { nome: string; cor: string; funcao: string; nao: 
   },
 };
 
-type Props = { id: string; fonte: Fonte; di: number; pararTeste: boolean; aoVivo: boolean; ex: Extras; fechar: () => void };
+type Props = { id: string; fonte: Fonte; di: number; pararTeste: boolean; aoVivo: boolean; ex: Extras; fechar: () => void; atividade?: Atividade | null };
 
-export function Ficha({ id, fonte, di, pararTeste, aoVivo, ex, fechar }: Props) {
+export function Ficha({ id, fonte, di, pararTeste, aoVivo, ex, fechar, atividade }: Props) {
   return (
     <section className="ficha" aria-label="Ficha">
       <button type="button" className="ficha-fechar" onClick={fechar} aria-label="Fechar a ficha">×</button>
+      {atividade && aoVivo && (
+        <div className={"detalhe-estado tom-" + atividade.tom}>
+          <span className={"pilula-estado tom-" + atividade.tom}>{atividade.txt}</span>
+          <p>{atividade.detalhe}</p>
+          <p className="muted pequeno">Atividade comprovada (escritório operacional): vem do registro do próprio executor, nunca de uma animação.</p>
+        </div>
+      )}
       {id.startsWith("robo:") && id.split(":").length === 3 ? <FichaRobo id={id} fonte={fonte} di={di} pararTeste={pararTeste} />
         : id === "staff:escrivao" ? <FichaEscrivao fonte={fonte} di={di} aoVivo={aoVivo} />
         : id === "staff:guardiao" ? <FichaGuardiao fonte={fonte} di={di} />
@@ -165,7 +173,7 @@ function FichaAgente({ a }: { a: (typeof AGENTES)[string] }) {
         <div><dt>Último trabalho</dt><dd>{a.ultimo}</dd></div>
       </dl>
       {a.link && <Button variant="secondary" onClick={() => window.open(a.link!.url, "_blank")}>{a.link.rotulo}</Button>}
-      <p className="muted pequeno">Informação escrita à mão em 26/10/2026; o programa ainda não lê o trabalho dos agentes sozinho.</p>
+      <p className="muted pequeno">Função e agenda escritas à mão; a atividade de cima vem do registro do executor (desde a versão 0.1.14).</p>
     </>
   );
 }
