@@ -15,7 +15,7 @@ export type Detalhes = { em: string | null; robos: Record<string, DetalheRobo>; 
 
 export const TIPOS: Record<TipoEvento, { rotulo: string; explica: string }> = {
   op: { rotulo: "operou", explica: "Ordem executada (compra ou venda), com o custo pago." },
-  vai: { rotulo: "vai operar", explica: "Decidiu no fechamento; a ordem sai na próxima abertura, se o motor de risco deixar." },
+  vai: { rotulo: "vai operar", explica: "A regra mandou comprar ou vender no fechamento; a ordem sai na próxima abertura, se o motor de risco deixar." },
   nao: { rotulo: "não operou", explica: "O robô olhou e decidiu não mandar ordem. O motivo vem da regra, com os números do dia." },
   rec: { rotulo: "recusada", explica: "O robô quis operar, mas o motor de risco recusou a ordem." },
   freio: { rotulo: "freio", explica: "Motor de risco ou botão de parar: pausou, parou, zerou ou voltou." },

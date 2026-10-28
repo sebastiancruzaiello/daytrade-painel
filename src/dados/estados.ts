@@ -346,7 +346,8 @@ function lote(e: Entrada): Entidade[] {
       || (pg && !pg.aberto ? { estado: "aguardando-mercado" as Estado, motivo: `Bolsa fechada, ${abre(pg)}. ` + (r.situacao === "ativo, em caixa" ? "Em caixa." : `Comprado em ${Object.keys(r.posicoes).map(a => a.replace(/USDT$/, "")).join(", ") || alvo}.`) } : null)
       || { estado: "ativo" as Estado, motivo: (pg ? "Pregão aberto. " : "") + (r.situacao === "ativo, em caixa" ? "Em caixa." : `Comprado em ${Object.keys(r.posicoes).map(a => a.replace(/USDT$/, "")).join(", ") || alvo}.`) + (ativ ? " " + ativ.charAt(0).toUpperCase() + ativ.slice(1) : "") };
     const d = r.ultima_decisao;
-    const opera = d && /^(comprar|vender|zerar)/i.test(d.texto);
+    // "vai operar" só quando a regra mandou comprar ou vender e o motor não avisou que não executa (pausa, parada, botão)
+    const opera = !!d && /^(comprar|vender)\b/i.test(d.texto) && !/\(não executa:/i.test(d.texto);
     const decisao: Evento | null = d ? { d: d.dia || r.ultimo_pregao || "", tipo: opera ? "vai" : "nao", tom: "neutro",
       txt: (opera ? "" : "não operou: ") + d.texto.replace(/^não operar: /, "") + (d.para ? ` (decidido no fechamento de ${dBR(d.dia || "")}, vale para ${dBR(d.para)})` : "") } : null;
     const exposicao = r.valor != null && r.caixa != null ? r.valor - r.caixa : null;

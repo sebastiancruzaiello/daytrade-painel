@@ -49,7 +49,7 @@ Cada entrada da linha do tempo tem um selo:
 | Selo | Quer dizer |
 |---|---|
 | operou | Ordem executada, com o custo pago naquela ordem. |
-| vai operar | Decidiu no fechamento; a ordem sai na próxima abertura, se o motor de risco deixar (lote de robôs). |
+| vai operar | A regra mandou comprar ou vender no fechamento e a ordem sai na próxima abertura (lote de robôs). Se o motor avisou que não executa (pausa, parada, botão), vira "não operou". |
 | não operou | O robô olhou e decidiu não mandar ordem. O motivo vem da regra, com os números do dia. Exemplos: "a regra manda seguir comprado e já estava", "o momentum só escolhe às segundas", "checagem das 11:00: preço abaixo do teto", "R$ 100 não compram 1 BOVA11". Dias seguidos com a mesma decisão viram uma linha só ("30 vezes desde 02/09"). |
 | recusada | O robô quis operar e o motor de risco recusou. Exemplos: dia de FOMC, preço velho, limite de ordens. |
 | freio | Motor de risco ou botão: pausou, parou, zerou, voltou. |

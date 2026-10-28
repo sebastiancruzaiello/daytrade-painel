@@ -37,6 +37,12 @@ test("os 9 robôs viram cartões de observação, cada um com sua moeda, régua 
   assert.match(ief.decisao!.txt, /^não operou: seguir em caixa/);
   const vnq = l.find(x => x.id === "lote:mm10m-vnq")!;
   assert.equal(vnq.decisao!.tipo, "vai", "vender na próxima abertura é decisão de operar");
+  const parada = structuredClone(EXEMPLO);
+  parada.robos["mm10m-vnq"].ultima_decisao.texto = "vender VNQ na próxima abertura (não executa: conta pausada)";
+  parada.robos["mm20-sol"].ultima_decisao.texto = "sem sinal: ainda não há histórico suficiente para a regra";
+  const l2 = lote(entrada(parada));
+  assert.equal(l2.find(x => x.id === "lote:mm10m-vnq")!.decisao!.tipo, "nao", "o motor avisou que não executa");
+  assert.equal(l2.find(x => x.id === "lote:mm20-sol")!.decisao!.tipo, "nao");
   const bova = l.find(x => x.id === "lote:mm20-bova11")!;
   assert.equal(bova.estado, "ativo", "B3 aberta no exemplo");
   assert.equal(bova.moeda, "BRL");
