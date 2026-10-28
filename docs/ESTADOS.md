@@ -124,12 +124,11 @@ O cripto diário (MM20 BTC, MM20 ETH e Momentum) continua no salão antigo, por 
 
 | No escritório | Quer dizer |
 |---|---|
-| Sentado | rodando e comprado |
-| Em pé na mesa | rodando em caixa, ou esperando (bolsa fechada, sem dado) |
+| Sentado | trabalhando: rodando, comprado ou em caixa (desde a 0.1.14; em caixa não é desligado) |
 | Apagado | parado, falha de conexão ou sem telemetria; continua no lugar, não some |
 | Faixa no peito | régua ou carteira de referência (não opera) |
-| Número em verde ou vermelho sobre a cabeça | resultado desde o começo (só quando está rodando) |
-| Palavra sobre a cabeça | a situação, quando não é "ativo" (fechado, sem dado, dado velho, pausa, parado, sem capital) |
+| Número em verde ou vermelho sobre a cabeça | ganho ou perda do dia ou acumulado, com moeda (desde a 0.1.14, veja abaixo) |
+| Palavra sobre a cabeça | a situação em poucas palavras (pronto, monitorando, fechado, sem dado, parado, sem telemetria) |
 
 Clicar numa pessoa da ala abre a mesma ficha da tela Robôs. Se a lista tiver mais gente que lugares, quem sobra
 fica fora do desenho e uma placa diz quantos: a tela Robôs continua mostrando todos.
@@ -150,3 +149,43 @@ O relatório do day trade só traz o valor do **começo do dia**. Com a linha `r
 **caixa + a posição a preço da última checagem** (de meia em meia hora), e as posições aparecem com a quantidade.
 Debaixo do valor fica de quando ele é. Comprado e sem preço da checagem: o painel não inventa, mostra o valor do
 começo do dia e diz que falta a marcação. Lucro realizado e não realizado separados ainda não vêm da VPS.
+
+## Escritório operacional (0.1.14, linhas `prontidao:resumo`, `agentes:resumo` e `resultado:resumo`)
+
+Pedido de 28/10/2026: um escritório que funciona de verdade, pronto às 9h de Brasília, com cada mercado no seu horário.
+As contas ficam no exportador da VPS (daytrade-lab, `painel-aovivo/painel/sessoes.py`, `escritorio.py`, `resultado.py`);
+o painel só mostra e refaz a fase de minuto em minuto com as janelas que vieram.
+
+**Faixa de prontidão (topo do Pregão).** Relógio de Brasília e de Nova York (o de Nova York muda sozinho com o horário de
+verão de lá), o escritório e um chip por segmento:
+
+| Segmento | Horário (Brasília) | Observação |
+|---|---|---|
+| B3 ações (PETR4) | pré-abertura 9h45, negocia 10h, fecha 16h55, leilão até 17h | grade nova a partir de 03/11/2026: fecha 17h55, leilão até 18h |
+| B3 ETFs (BOVA11, SMAL11) | pré-abertura 9h45, negocia 10h05, fecha 16h55, leilão até 17h | mesma mudança de 03/11 |
+| EUA (NYSE) | 9h30–16h de Nova York | 10h30 de Brasília até 30/10/2026; 11h30 depois do fim do horário de verão de lá |
+| Cripto | contínuo | sem abertura nem fechamento |
+
+Os horários da B3 vêm dos relatórios de 28/10/2026 e precisam ser conferidos com a B3; feriados e meio pregão vêm do
+calendário da simulação da bolsa. O escritório fica "preparando" das 8h30 às 8h55 e "pronto" às 9h; 9h não é abertura de
+mercado. Qualquer impedimento do checklist da VPS (dado parado, simulação fora do prazo, aprovado não instalado,
+calendário vencendo) deixa o chip vermelho com a quantidade. Sem a linha da VPS, a faixa diz isso em amarelo.
+
+**Ganho e perda acima de cada operador.** Duas linhas sobre a cabeça: a situação e, em negrito, o dinheiro.
+
+- `DIA +R$ 3,24` = valor agora − valor no começo do dia (meia-noite de Brasília) − aporte do dia.
+- `ACUM −US$ 1,10` = valor agora − capital (o capital já inclui os aportes).
+- Verde ganho, vermelho perda, cinza zero; amarelo "sem marcação" quando não há preço (o número não é inventado).
+- Moedas nunca se somam. O aporte da carteira Brasil (R$ 100 → R$ 400 em 28/10) aparece como aporte, não como lucro.
+- Realizado × não realizado ainda não vem: a simulação não separa os dois.
+
+**Agentes de IA e apoio.** Cada personagem mostra a última tarefa com prova (relatório, diário, gasto da API, linha
+gravada no n8n) e a hora. Sem prova legível aparece "aguardando agenda" com a agenda; prova com mais de 24 horas vira
+"parado desde". Ninguém parece ocupado sem prova.
+
+**Cinco dimensões (ficha na tela Robôs).** Mercado (fase agora), saúde operacional, atividade, posição e estágio de
+validação, cada uma na sua linha. A cor do dinheiro nunca é a cor da saúde.
+
+**Inventário (tela Robôs).** Para cada operador: aprovado (repositório + catálogo), instalado na VPS, processo em dia,
+no cron, enviado e desenhado na tela. Aprovado que não foi achado continua na tabela; a lista nunca encolhe para caber
+no que chegou. O robô da PETR4 do PC aparece como dependência do PC/MT5, ainda sem telemetria.

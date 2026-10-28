@@ -4,6 +4,7 @@ import type { Fonte } from "./formato";
 import type { Vizinhas, LinhaBolsa } from "./vizinhas";
 import type { Detalhes, DetalheRobo, EventoDetalhe, TipoEvento } from "./detalhe";
 import type { Lote, RoboLote } from "./lote";
+import type { Dimensoes, ResultadoOp } from "./escritorio";
 
 // Os estados que o salão mostra. "Aguardando mercado" e "falha de conexão" nunca se confundem (Plano 2.0 §17).
 export type Estado =
@@ -50,6 +51,8 @@ export type Entidade = {
   veredito?: string | null;  // parecer do laboratório à vista no cartão (robôs de observação)
   valorNota?: string | null; // de quando é o valor mostrado (marcação a preço de hh:mm, começo do dia, sem preço)
   semTelemetria?: boolean;   // o cadastro espera este robô, mas a leitura não trouxe nada dele
+  res?: ResultadoOp;         // ganho/perda do dia e acumulado, na moeda da conta (linha resultado:resumo, 28/10/2026)
+  dim?: Dimensoes;           // mercado, saúde, atividade, posição e estágio, cada um na sua linha
 };
 
 // Como está a ligação do painel com o n8n (vem do App).

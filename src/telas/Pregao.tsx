@@ -3,15 +3,19 @@ import { Button } from "../ui/affectui/button";
 import { SegmentedControl } from "../ui/affectui/segmented-control";
 import { NumberTicker } from "../ui/affectui/number-ticker";
 import { NotificationStack, type Notice } from "../ui/affectui/notification-stack";
-import { criarCena, type Cena } from "../salao/cena";
+import { criarCena, type Cena, type Area } from "../salao/cena";
 import { KS, NOME, COR, REF, fmt, pct, dBR, hora, resumoConta, type Fonte } from "../dados/formato";
 import type { Base, InfoVivo } from "../App";
 import { IconePlay, IconePausa } from "./icones";
 import { Ficha } from "./Ficha";
 import { segurar, pregao, type Extras, type Mercado } from "../dados/mercados";
 import { ESTADOS, contarEstados, type Entidade, type Estado } from "../dados/estados";
-import { planta, desenhados, type Conta } from "../dados/elenco";
+import { planta, desenhados, FIXOS, type Conta } from "../dados/elenco";
 import { DetalheEntidade } from "./Robos";
+import {
+  faseAgora, escritorioAgora, relogio, atividade, reconciliarInventario, PERSONAGEM_FICHA,
+  type Prontidao, type Agentes, type Resultados, type Periodo, type Atividade,
+} from "../dados/escritorio";
 
 type Props = {
   fonte: Fonte; di: number; setDi: (i: number) => void;
@@ -19,6 +23,8 @@ type Props = {
   base: Base; setBase: (b: Base) => void; temVivo: boolean; pararTeste: boolean;
   info: InfoVivo; vivo: Fonte | null; ex: Extras;
   entidades: Entidade[]; contaElenco: Conta; verRobos: () => void;
+  pront: Prontidao | null; agentes: Agentes | null; res: Resultados | null;
+  periodo: Periodo; setPeriodo: (p: Periodo) => void; agora: number;
 };
 
 export function Pregao(p: Props) {
@@ -38,9 +44,11 @@ export function Pregao(p: Props) {
     cena.current = criarCena(cv.current!, setZoom, setSelecionado);
     return () => cena.current?.destruir();
   }, []);
+  // O que cada agente e cada robô de apoio comprovadamente fez (linha agentes:resumo + tabelas do n8n).
+  const atividades = useMemo(() => atividadesDosPersonagens(p.agentes, p.ex, p.agora), [p.agentes, p.ex, p.agora]);
   useEffect(() => {
-    cena.current?.mostrar({ D: fonte, dias, di, pararTeste, vivo: p.vivo, aoVivo: base === "aovivo", ex: p.ex, entidades: p.entidades });
-  }, [fonte, dias, di, pararTeste, p.vivo, base, p.ex, p.entidades]);
+    cena.current?.mostrar({ D: fonte, dias, di, pararTeste, vivo: p.vivo, aoVivo: base === "aovivo", ex: p.ex, entidades: p.entidades, periodo: p.periodo, atividades });
+  }, [fonte, dias, di, pararTeste, p.vivo, base, p.ex, p.entidades, p.periodo, atividades]);
   // Quem estava selecionado e saiu da lista: a ficha fecha.
   const entSel = selecionado?.startsWith("ent:") ? p.entidades.find(x => x.id === selecionado.slice(4)) || null : null;
   useEffect(() => { if (selecionado?.startsWith("ent:") && !entSel) { setSelecionado(null); cena.current?.selecionar(null); } }, [selecionado, entSel]);
@@ -58,6 +66,8 @@ export function Pregao(p: Props) {
 
   return (
     <div className="pregao">
+      <FaixaProntidao pront={p.pront} agora={p.agora} periodo={p.periodo} setPeriodo={p.setPeriodo} aoVivo={base === "aovivo"}
+        focar={a => cena.current?.focar(a)} />
       <div className={"pregao-cima" + (lateral ? "" : " sem-lateral")}>
       <section className="palco" aria-label="Salão de trading animado">
         <div className="palco-rola">
@@ -91,10 +101,10 @@ export function Pregao(p: Props) {
           {entSel
             ? <DetalheEntidade x={entSel} fechar={fecharFicha} />
             : selecionado && !selecionado.startsWith("ent:")
-            ? <Ficha id={selecionado} fonte={fonte} di={di} pararTeste={pararTeste} aoVivo={base === "aovivo"} ex={p.ex} fechar={fecharFicha} />
+            ? <Ficha id={selecionado} fonte={fonte} di={di} pararTeste={pararTeste} aoVivo={base === "aovivo"} ex={p.ex} fechar={fecharFicha} atividade={atividades[selecionado] || null} />
             : <>
                 <h2>Situação agora</h2>
-                <Situacao lista={p.entidades} conta={p.contaElenco} ver={p.verRobos} />
+                <Situacao lista={p.entidades} conta={p.contaElenco} ver={p.verRobos} pront={p.pront} />
                 <h2>Avisos</h2>
                 <Avisos {...p} />
                 <Legenda />
@@ -204,10 +214,12 @@ function Avisos({ info, vivo, base, fonte, di }: Props) {
 }
 
 // Quantos robôs em cada situação e quem precisa de atenção, com o motivo. "Aguardando mercado" não é problema.
-function Situacao({ lista, conta, ver }: { lista: Entidade[]; conta: Conta; ver: () => void }) {
+function Situacao({ lista, conta, ver, pront }: { lista: Entidade[]; conta: Conta; ver: () => void; pront: Prontidao | null }) {
   const c = contarEstados(lista);
   const atencao = lista.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado");
   const nDesenho = useMemo(() => desenhados(lista, planta(lista)), [lista]);
+  const desenhadosIds = useMemo(() => { const pl = planta(lista); return new Set([...pl.lugares.map(l => l.id), ...lista.filter(x => FIXOS.has(x.id)).map(x => x.id)]); }, [lista]);
+  const inv = reconciliarInventario(pront, desenhadosIds);
   const semDado = lista.filter(x => x.semTelemetria).length;
   return (
     <div className="situacao">
@@ -217,6 +229,12 @@ function Situacao({ lista, conta, ver }: { lista: Entidade[]; conta: Conta; ver:
         {conta.esperados == null && <span className="muted"> (a VPS ainda não manda o cadastro; sem ele, quem some não é notado)</span>}
         {semDado > 0 && <span className="dn"> · {semDado} sem telemetria</span>}
       </p>
+      {inv && (
+        <p className="conta-elenco" title="Aprovado: está na main do repositório e a ficha do catálogo foi aprovada. Instalado: o config está na VPS. Em dia: a simulação gravou dentro do prazo. Enviado: veio na leitura. Desenhado: está no escritório.">
+          Inventário: aprovados <b>{inv.aprovados}</b> · instalados <b className={inv.instalados < inv.aprovados ? "dn" : ""}>{inv.instalados}</b> · em dia <b className={inv.emDia < inv.instalados ? "dn" : ""}>{inv.emDia}</b> · enviados <b className={inv.enviados < inv.instalados ? "dn" : ""}>{inv.enviados}</b> · desenhados <b className={inv.desenhados < inv.enviados ? "dn" : ""}>{inv.desenhados}</b>
+          {inv.faltando.length > 0 && <span className="muted"> · {inv.faltando.length} com pendência (veja Robôs › Inventário)</span>}
+        </p>
+      )}
       <div className="resumo-estados">
         {(Object.keys(ESTADOS) as Estado[]).filter(k => c[k]).map(k => (
           <span key={k} className={"chip-estado tom-" + ESTADOS[k].tom} title={ESTADOS[k].explica}><i aria-hidden="true" />{ESTADOS[k].rotulo} <b>{c[k]}</b></span>
@@ -234,7 +252,9 @@ function Situacao({ lista, conta, ver }: { lista: Entidade[]; conta: Conta; ver:
 function Legenda() {
   return (
     <ul className="legenda">
-      <li><b>Sentado na mesa</b> robô com posição aberta. No café ou na sinuca, está em caixa.</li>
+      <li><b>Acima da cabeça</b> ganho ou perda do período escolhido (DIA ou ACUM), em verde, vermelho ou neutro, com sinal e moeda; embaixo, a situação (monitorando, em caixa, comprado, fechado, sem dado).</li>
+      <li><b>Sentado no posto</b> robô trabalhando, comprado ou em caixa. Apagado: parado, sem conexão ou sem telemetria. Ninguém que trabalha vai para o café.</li>
+      <li><b>Agentes e apoio</b> mostram a última atividade comprovada; sem prova, "sem registro" ou "aguardando agenda".</li>
       <li><b>Nomes</b> ficam nos pés de cada um; a descrição aparece ao clicar.</li>
       <li><b>TVs</b> preço diário da moeda ou do fundo; nas mesas MM20, a linha clara é a média de 20 dias.</li>
       <li><b>Telão</b> 10.000 em cada conta: cripto em linha cheia; tracejado, só segurar BTC, SPY (EUA) e BOVA11 (B3).</li>
@@ -244,4 +264,70 @@ function Legenda() {
       <li><b>Porta</b> conta parada: os robôs saem e só voltam com ordem do Sebastian.</li>
     </ul>
   );
+}
+
+// ---------- faixa de prontidão: relógios, fase de cada mercado e o escritório pronto às 9h ----------
+const SEGS: [string, string][] = [["b3-acoes", "B3 ações"], ["b3-etf", "B3 ETFs"], ["eua", "EUA"], ["cripto", "Cripto"]];
+const AREAS: [Area, string][] = [["tudo", "Tudo"], ["cripto", "Cripto"], ["acoes", "Ações EUA/B3"], ["robos", "Ala dos robôs"], ["apoio", "Apoio e IA"]];
+
+function FaixaProntidao({ pront, agora, periodo, setPeriodo, aoVivo, focar }: {
+  pront: Prontidao | null; agora: number; periodo: Periodo; setPeriodo: (p: Periodo) => void; aoVivo: boolean; focar: (a: Area) => void;
+}) {
+  const esc = escritorioAgora(pront, agora);
+  const mercados = pront?.checklist.mercados;
+  const idade = pront ? Math.round((agora - Date.parse(pront.em)) / 60000) : null;
+  return (
+    <section className="faixa-prontidao" aria-label="Prontidão do escritório e fase de cada mercado">
+      <div className="fp-relogios">
+        <span title="Horário de Brasília"><b>{relogio(agora, "America/Sao_Paulo")}</b> Brasília</span>
+        <span title="Horário de Nova York (muda sozinho com o horário de verão de lá)"><b>{relogio(agora, "America/New_York")}</b> Nova York</span>
+      </div>
+      <span className={"fp-chip tom-" + esc.tom} title="Agenda do escritório: preparação das 8h30 às 8h55 e pronto às 9h de Brasília. 9h não é a abertura da B3: cada segmento negocia no seu horário.">
+        <i aria-hidden="true" />Escritório: {esc.texto}
+      </span>
+      {SEGS.map(([k, nome]) => {
+        const f = faseAgora(k, pront?.sessoes[k], agora);
+        const m = mercados?.[k.startsWith("b3") ? "b3" : k];
+        const bloq = m && m.bloqueios ? ` · ${m.bloqueios} impedimento${m.bloqueios > 1 ? "s" : ""}` : "";
+        return (
+          <span key={k} className={"fp-chip tom-" + (m && m.bloqueios ? "ruim" : f.tom)} title={(pront?.sessoes[k]?.fonte || "") + (m ? `\nChecklist: ${m.prontos} prontos, ${m.esperando} esperando, ${m.bloqueios} impedimentos.` : "")}>
+            <i aria-hidden="true" /><b>{nome}</b> {f.texto}{f.proximo ? " · " + f.proximo : ""}{bloq}
+          </span>
+        );
+      })}
+      <span className="fp-direita">
+        <span className="fp-seletor" role="group" aria-label="Período do ganho e da perda">
+          {(["dia", "acumulado"] as Periodo[]).map(x => (
+            <button key={x} type="button" aria-pressed={periodo === x} className={periodo === x ? "ligado" : ""} onClick={() => setPeriodo(x)}
+              title={x === "dia" ? "Resultado de hoje (desde a meia-noite de Brasília), sem contar aporte" : "Resultado desde o começo de cada conta, sem contar aporte"}>
+              {x === "dia" ? "Dia" : "Acumulado"}
+            </button>
+          ))}
+        </span>
+        <span className="fp-foco" role="group" aria-label="Ir para uma área do escritório">
+          {AREAS.map(([a, t]) => <button key={a} type="button" onClick={() => focar(a)}>{t}</button>)}
+        </span>
+        <small className="muted" title="Hora em que a VPS montou o checklist e o relógio. O painel lê de minuto em minuto; a VPS manda de 10 em 10.">
+          {aoVivo ? (idade != null ? `checklist da VPS de há ${idade} min` : "sem checklist da VPS") : "ensaio: a faixa mostra o agora"}
+        </small>
+      </span>
+    </section>
+  );
+}
+
+// Personagem fixo → atividade comprovada. Para os robôs do n8n, a prova é a própria linha que eles gravam.
+function atividadesDosPersonagens(ag: Agentes | null, ex: Extras, agora: number): Record<string, Atividade> {
+  const extra: Record<string, { em: string | null; texto: string } | null> = {
+    "robo:guardiao-dados": ex.guardiao ? { em: ex.guardiao.em, texto: `conferência dos dados (${ex.guardiao.nivel})` } : null,
+    "robo:coletor-clima": ex.clima ? { em: ex.clima.em, texto: "medo e ganância coletados" } : null,
+    "robo:coletor-mercados": ex.aoVivo ? { em: ex.spy.em, texto: "preços de SPY e BOVA11 coletados" } : null,
+  };
+  const out: Record<string, Atividade> = {};
+  for (const [id, fichas] of Object.entries(PERSONAGEM_FICHA)) {
+    const ms = fichas.map(f => ag?.membros.find(m => m.id === f)).filter(Boolean) as Agentes["membros"];
+    // Prefere a versão com prova (ex.: Plantonista da VPS) à versão da nuvem, que o exportador não vê.
+    ms.sort((a, b) => Number(b.prova_na_vps) - Number(a.prova_na_vps));
+    out[id] = atividade(ms, agora, extra[id]);
+  }
+  return out;
 }

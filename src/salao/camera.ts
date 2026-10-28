@@ -107,6 +107,7 @@ export function criarCamera(cv, W, H, alvos, aoMudar, aoTocar) {
     mais() { zoomEm(1.4); },
     menos() { zoomEm(1 / 1.4); },
     inicio,
+    ir: irPara,
     zoom: () => tz,
     destruir() {
       cv.removeEventListener("wheel", roda); cv.removeEventListener("pointerdown", desce); cv.removeEventListener("pointermove", move);
