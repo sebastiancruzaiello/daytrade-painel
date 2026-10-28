@@ -252,8 +252,9 @@ function Situacao({ lista, conta, ver, pront }: { lista: Entidade[]; conta: Cont
 function Legenda() {
   return (
     <ul className="legenda">
-      <li><b>Acima da cabeça</b> ganho ou perda do período escolhido (DIA ou ACUM), em verde, vermelho ou neutro, com sinal e moeda; embaixo, a situação (monitorando, em caixa, comprado, fechado, sem dado).</li>
-      <li><b>Sentado no posto</b> robô trabalhando, comprado ou em caixa. Apagado: parado, sem conexão ou sem telemetria. Ninguém que trabalha vai para o café.</li>
+      <li><b>Sentado na mesa</b> robô comprado (tem moeda ou ação), mesmo parado esperando. Em cima: ganho ou perda do período escolhido (DIA ou ACUM), em verde, vermelho ou neutro, com moeda; embaixo, o que está comprado.</li>
+      <li><b>Área de lazer</b> (sinuca e café, na frente) quem está sem posição, inclusive esperando sinal; a cadeira dele fica vazia na mesa. "Compra na próxima abertura" quando já decidiu comprar.</li>
+      <li><b>Em pé no lugar, com ⚠</b> falha, pausa, parado ou sem dado: nunca vai para o lazer. Apagado: parado, sem conexão ou sem telemetria.</li>
       <li><b>Agentes e apoio</b> mostram a última atividade comprovada; sem prova, "sem registro" ou "aguardando agenda".</li>
       <li><b>Nomes</b> ficam nos pés de cada um; a descrição aparece ao clicar.</li>
       <li><b>TVs</b> preço diário da moeda ou do fundo; nas mesas MM20, a linha clara é a média de 20 dias.</li>
@@ -268,7 +269,7 @@ function Legenda() {
 
 // ---------- faixa de prontidão: relógios, fase de cada mercado e o escritório pronto às 9h ----------
 const SEGS: [string, string][] = [["b3-acoes", "B3 ações"], ["b3-etf", "B3 ETFs"], ["eua", "EUA"], ["cripto", "Cripto"]];
-const AREAS: [Area, string][] = [["tudo", "Tudo"], ["cripto", "Cripto"], ["acoes", "Ações EUA/B3"], ["robos", "Ala dos robôs"], ["apoio", "Apoio e IA"]];
+const AREAS: [Area, string][] = [["tudo", "Tudo"], ["cripto", "Cripto"], ["acoes", "Ações EUA/B3"], ["robos", "Ala dos robôs"], ["lazer", "Área de lazer"], ["apoio", "Apoio e IA"]];
 
 function FaixaProntidao({ pront, agora, periodo, setPeriodo, aoVivo, focar }: {
   pront: Prontidao | null; agora: number; periodo: Periodo; setPeriodo: (p: Periodo) => void; aoVivo: boolean; focar: (a: Area) => void;

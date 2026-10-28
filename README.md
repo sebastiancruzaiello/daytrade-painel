@@ -60,6 +60,16 @@ nunca vira lucro. Os agentes de IA e o apoio mostram a última tarefa com prova,
 prova. A tela Robôs ganha as cinco dimensões de cada operador e o inventário aprovado × instalado × enviado × desenhado.
 Lê três linhas novas do exportador (`prontidao:resumo`, `agentes:resumo`, `resultado:resumo`). Detalhes em `docs/ESTADOS.md`.
 
+## Mesa e área de lazer
+
+Desde a 0.1.15 a mesa é só de quem está **comprado** (tem moeda ou ação na mão), mesmo que esteja parado esperando:
+em cima dele fica o ganho ou a perda, com moeda e período, e o que ele tem. Quem não tem posição, inclusive quem está
+esperando sinal ou já decidiu comprar na próxima abertura, levanta e vai para a **área de lazer** na frente do
+escritório (sinuca, sofás e café); a cadeira dele fica vazia na mesa. Falha, pausa, parado e falta de dado nunca vão
+para o lazer: ficam em pé no próprio lugar com ⚠ e o motivo. O escritório ficou maior (mais fundo, com o lazer na
+frente) e os lugares mais espaçados, para os nomes não se sobreporem. Regra em `src/dados/elenco.ts` (`ondeFica`,
+`vagasLazer`), com testes.
+
 ## Desenvolver
 
     npm ci

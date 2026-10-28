@@ -124,11 +124,18 @@ O cripto diário (MM20 BTC, MM20 ETH e Momentum) continua no salão antigo, por 
 
 | No escritório | Quer dizer |
 |---|---|
-| Sentado | trabalhando: rodando, comprado ou em caixa (desde a 0.1.14; em caixa não é desligado) |
+| Sentado na mesa | comprado: tem moeda ou ação na mão, mesmo parado esperando (desde a 0.1.15) |
+| Na área de lazer (sinuca, sofá, café) | sem posição: em caixa, esperando sinal ou com compra marcada para a próxima abertura; a cadeira fica vazia |
+| Em pé no lugar, com ⚠ | falha, pausa, parado, dado velho ou sem dado; nunca vai para o lazer |
 | Apagado | parado, falha de conexão ou sem telemetria; continua no lugar, não some |
 | Faixa no peito | régua ou carteira de referência (não opera) |
 | Número em verde ou vermelho sobre a cabeça | ganho ou perda do dia ou acumulado, com moeda (desde a 0.1.14, veja abaixo) |
 | Palavra sobre a cabeça | a situação em poucas palavras (pronto, monitorando, fechado, sem dado, parado, sem telemetria) |
+
+A regra da mesa vale também para o salão antigo do cripto diário (MM20 sem moeda vai para o café e a sinuca de lá) e
+para as réguas "só segurar" da ala de ações: quando a simulação da bolsa manda a conta da régua, ela aparece só na ala
+dos robôs, para não ficar duplicada. A área de lazer fica na frente do escritório (y 14,2 a 21,6), com os móveis no
+fundo e até três fileiras de pessoas repartidas por igual; quem não cabe é contado numa placa.
 
 Clicar numa pessoa da ala abre a mesma ficha da tela Robôs. Se a lista tiver mais gente que lugares, quem sobra
 fica fora do desenho e uma placa diz quantos: a tela Robôs continua mostrando todos.
