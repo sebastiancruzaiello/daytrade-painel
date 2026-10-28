@@ -3,7 +3,7 @@
 // Como estados.ts, não importa nada em tempo de execução: os testes rodam direto no Node.
 import type { Linha } from "./formato";
 
-export type TipoEvento = "op" | "nao" | "rec" | "freio" | "info";
+export type TipoEvento = "op" | "vai" | "nao" | "rec" | "freio" | "info";
 export type EventoDetalhe = { em: string; tipo: TipoEvento; txt: string; vezes?: number; desde?: string };
 export type ConciliacaoDetalhe = { fecha: boolean | null; nota: string; caixa_refeito?: number; diferenca?: number };
 export type DetalheRobo = {
@@ -15,6 +15,7 @@ export type Detalhes = { em: string | null; robos: Record<string, DetalheRobo>; 
 
 export const TIPOS: Record<TipoEvento, { rotulo: string; explica: string }> = {
   op: { rotulo: "operou", explica: "Ordem executada (compra ou venda), com o custo pago." },
+  vai: { rotulo: "vai operar", explica: "Decidiu no fechamento; a ordem sai na próxima abertura, se o motor de risco deixar." },
   nao: { rotulo: "não operou", explica: "O robô olhou e decidiu não mandar ordem. O motivo vem da regra, com os números do dia." },
   rec: { rotulo: "recusada", explica: "O robô quis operar, mas o motor de risco recusou a ordem." },
   freio: { rotulo: "freio", explica: "Motor de risco ou botão de parar: pausou, parou, zerou ou voltou." },

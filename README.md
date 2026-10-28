@@ -37,6 +37,12 @@ Desde a 0.1.10 a ficha de cada robô lê a linha `robos:detalhe`, quando ela vem
 No cartão aparecem a última decisão e um aviso quando o caixa não fecha. O formato e o significado de cada campo
 estão em `docs/ESTADOS.md`. Sem a linha, a ficha fica como na 0.1.9.
 
+## Lote de robôs
+
+Desde a 0.1.11 a tela Robôs também mostra os 9 robôs do lote de observação, lidos da linha `lote:resumo`. Cada um
+aparece com o veredito, a régua na mesma moeda, a última decisão e o quadro Dinheiro. Os resultados nunca se somam.
+Em `docs/ESTADOS.md` está como cada situação do lote vira situação do painel.
+
 ## Desenvolver
 
     npm ci

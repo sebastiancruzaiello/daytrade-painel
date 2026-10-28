@@ -1,0 +1,585 @@
+{
+ "versao": "painel-v1",
+ "lote": "lote-v1",
+ "gerado_em": "2026-10-28T00:24:12+00:00",
+ "relatorio_em": "2026-10-28T00:24:12+00:00",
+ "diario_integro": true,
+ "diario_linhas": 239,
+ "diario_problema": null,
+ "botao_parar": null,
+ "aviso_geral": "Todas as instâncias são OBSERVAÇÃO: as regras foram reprovadas no laboratório. Resultado daqui não aprova regra nem serve para escolher a melhor; promover exige passar pela fábrica.",
+ "avisos": [],
+ "erro": null,
+ "robos": {
+  "mm20-sol": {
+   "identidade": "MM20|v1|SOLUSDT|diário|abertura do dia seguinte (00:00 UTC), passo e mínimo da Binance",
+   "estrategia": "MM20-v1",
+   "mercado": "cripto",
+   "alvo": "SOLUSDT",
+   "horizonte": "diário",
+   "execucao": "abertura do dia seguinte (00:00 UTC), passo e mínimo da Binance",
+   "moeda": "USDT",
+   "capital": 100,
+   "estagio": "observacao",
+   "veredito": "Regra MM20-v1 REPROVADA no laboratório em 26/10/2026 (BTC/ETH: abaixo do p90 do sorteio). Neste ativo nunca passou pela fila. Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-09-30",
+   "motivo": null,
+   "inicio": "2026-08-31",
+   "ultimo_pregao": "2026-09-29",
+   "valor": 99.925273,
+   "resultado": -0.0007472699999999666,
+   "regua_valor": 115.471372,
+   "regua_resultado": 0.15471371999999994,
+   "queda_maxima": -0.09796558020410451,
+   "operacoes": 5,
+   "custos": 0.5761,
+   "dividendos": 0.0,
+   "imposto_pago": 0.0,
+   "caixa": 0.0776,
+   "posicoes": {
+    "SOLUSDT": 0.838
+   },
+   "ultima_decisao": {
+    "dia": "2026-09-29",
+    "para": "2026-09-30",
+    "texto": "seguir comprado em SOLUSDT"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-25",
+     102.439273,
+     118.378372
+    ],
+    [
+     "2026-09-26",
+     101.819153,
+     117.661312
+    ],
+    [
+     "2026-09-27",
+     102.305193,
+     118.223332
+    ],
+    [
+     "2026-09-28",
+     99.707393,
+     115.219432
+    ],
+    [
+     "2026-09-29",
+     99.925273,
+     115.471372
+    ]
+   ]
+  },
+  "momentum-cripto7": {
+   "identidade": "MOMENTUM|v1|cesta-7-cripto|semanal|abertura do dia seguinte (00:00 UTC), passo e mínimo da Binance",
+   "estrategia": "MOMENTUM-v1",
+   "mercado": "cripto",
+   "alvo": "cesta-7-cripto",
+   "horizonte": "semanal",
+   "execucao": "abertura do dia seguinte (00:00 UTC), passo e mínimo da Binance",
+   "moeda": "USDT",
+   "capital": 100,
+   "estagio": "observacao",
+   "veredito": "Regra MOMENTUM-v1 REPROVADA no laboratório em 26/10/2026 (1 de 4 itens). Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-09-30",
+   "motivo": null,
+   "inicio": "2026-08-31",
+   "ultimo_pregao": "2026-09-29",
+   "valor": 105.633237,
+   "resultado": 0.05633237000000002,
+   "regua_valor": 111.966991,
+   "regua_resultado": 0.11966990999999982,
+   "queda_maxima": -0.06842236999999995,
+   "operacoes": 9,
+   "custos": 0.3556,
+   "dividendos": 0.0,
+   "imposto_pago": 0.0,
+   "caixa": 0.5861,
+   "posicoes": {
+    "ETHUSDT": 0.0132,
+    "ADAUSDT": 149.1,
+    "SOLUSDT": 0.279
+   },
+   "ultima_decisao": {
+    "dia": "2026-09-29",
+    "para": "2026-09-30",
+    "texto": "sem troca: o rodízio só decide no fechamento de domingo"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-25",
+     108.746196,
+     115.613781
+    ],
+    [
+     "2026-09-26",
+     107.94414,
+     114.373035
+    ],
+    [
+     "2026-09-27",
+     108.229794,
+     114.520841
+    ],
+    [
+     "2026-09-28",
+     106.119813,
+     112.346595
+    ],
+    [
+     "2026-09-29",
+     105.633237,
+     111.966991
+    ]
+   ]
+  },
+  "mm10m-efa": {
+   "identidade": "MM10M|v1|EFA|mensal|abertura do pregão seguinte, ação inteira",
+   "estrategia": "MM10M-v1",
+   "mercado": "eua",
+   "alvo": "EFA",
+   "horizonte": "mensal",
+   "execucao": "abertura do pregão seguinte, ação inteira",
+   "moeda": "USD",
+   "capital": 1000,
+   "estagio": "observacao",
+   "veredito": "Regra MM10M-v1 REPROVADA no laboratório em 27/10/2026 (SPY e BOVA11: abaixo do p90 do sorteio, DSR(b) 0,00). Neste ativo nunca passou pela fila. Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-10-01",
+   "motivo": null,
+   "inicio": "2026-09-01",
+   "ultimo_pregao": "2026-09-30",
+   "valor": 973.959679,
+   "resultado": -0.026040320999999977,
+   "regua_valor": 973.959679,
+   "regua_resultado": -0.026040320999999977,
+   "queda_maxima": -0.03958190022921315,
+   "operacoes": 1,
+   "custos": 0.4803,
+   "dividendos": 0.0,
+   "imposto_pago": 0.0,
+   "caixa": 38.9497,
+   "posicoes": {
+    "EFA": 9.0
+   },
+   "ultima_decisao": {
+    "dia": "2026-09-30",
+    "para": "2026-10-01",
+    "texto": "seguir comprado em EFA"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-24",
+     979.449685,
+     979.449685
+    ],
+    [
+     "2026-09-25",
+     988.989663,
+     988.989663
+    ],
+    [
+     "2026-09-28",
+     984.309693,
+     984.309693
+    ],
+    [
+     "2026-09-29",
+     979.809693,
+     979.809693
+    ],
+    [
+     "2026-09-30",
+     973.959679,
+     973.959679
+    ]
+   ]
+  },
+  "mm10m-ief": {
+   "identidade": "MM10M|v1|IEF|mensal|abertura do pregão seguinte, ação inteira",
+   "estrategia": "MM10M-v1",
+   "mercado": "eua",
+   "alvo": "IEF",
+   "horizonte": "mensal",
+   "execucao": "abertura do pregão seguinte, ação inteira",
+   "moeda": "USD",
+   "capital": 1000,
+   "estagio": "observacao",
+   "veredito": "Regra MM10M-v1 REPROVADA no laboratório em 27/10/2026 (SPY e BOVA11: abaixo do p90 do sorteio, DSR(b) 0,00). Neste ativo nunca passou pela fila. Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo, em caixa",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-10-01",
+   "motivo": null,
+   "inicio": "2026-09-01",
+   "ultimo_pregao": "2026-09-30",
+   "valor": 1000.0,
+   "resultado": 0.0,
+   "regua_valor": 970.939144,
+   "regua_resultado": -0.02906085599999997,
+   "queda_maxima": 0.0,
+   "operacoes": 0,
+   "custos": 0.0,
+   "dividendos": 0.0,
+   "imposto_pago": 0.0,
+   "caixa": 1000.0,
+   "posicoes": {},
+   "ultima_decisao": {
+    "dia": "2026-09-30",
+    "para": "2026-10-01",
+    "texto": "não operar: seguir em caixa (fechamento abaixo da média de 10 meses)"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-24",
+     1000.0,
+     974.739193
+    ],
+    [
+     "2026-09-25",
+     1000.0,
+     977.839168
+    ],
+    [
+     "2026-09-28",
+     1000.0,
+     973.139156
+    ],
+    [
+     "2026-09-29",
+     1000.0,
+     972.339138
+    ],
+    [
+     "2026-09-30",
+     1000.0,
+     970.939144
+    ]
+   ]
+  },
+  "mm10m-vnq": {
+   "identidade": "MM10M|v1|VNQ|mensal|abertura do pregão seguinte, ação inteira",
+   "estrategia": "MM10M-v1",
+   "mercado": "eua",
+   "alvo": "VNQ",
+   "horizonte": "mensal",
+   "execucao": "abertura do pregão seguinte, ação inteira",
+   "moeda": "USD",
+   "capital": 1000,
+   "estagio": "observacao",
+   "veredito": "Regra MM10M-v1 REPROVADA no laboratório em 27/10/2026 (SPY e BOVA11: abaixo do p90 do sorteio, DSR(b) 0,00). Neste ativo nunca passou pela fila. Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-10-01",
+   "motivo": null,
+   "inicio": "2026-09-01",
+   "ultimo_pregao": "2026-09-30",
+   "valor": 938.753656,
+   "resultado": -0.061246344000000064,
+   "regua_valor": 938.753656,
+   "regua_resultado": -0.061246344000000064,
+   "queda_maxima": -0.06444474545980172,
+   "operacoes": 1,
+   "custos": 0.4813,
+   "dividendos": 5.635,
+   "imposto_pago": 0.0,
+   "caixa": 42.4537,
+   "posicoes": {
+    "VNQ": 10.0
+   },
+   "ultima_decisao": {
+    "dia": "2026-09-30",
+    "para": "2026-10-01",
+    "texto": "vender VNQ na próxima abertura"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-24",
+     954.153665,
+     954.153665
+    ],
+    [
+     "2026-09-25",
+     952.353662,
+     952.353662
+    ],
+    [
+     "2026-09-28",
+     948.353647,
+     948.353647
+    ],
+    [
+     "2026-09-29",
+     947.753671,
+     947.753671
+    ],
+    [
+     "2026-09-30",
+     938.753656,
+     938.753656
+    ]
+   ]
+  },
+  "mm10m-gld": {
+   "identidade": "MM10M|v1|GLD|mensal|abertura do pregão seguinte, ação inteira",
+   "estrategia": "MM10M-v1",
+   "mercado": "eua",
+   "alvo": "GLD",
+   "horizonte": "mensal",
+   "execucao": "abertura do pregão seguinte, ação inteira",
+   "moeda": "USD",
+   "capital": 1000,
+   "estagio": "observacao",
+   "veredito": "Regra MM10M-v1 REPROVADA no laboratório em 27/10/2026 (SPY e BOVA11: abaixo do p90 do sorteio, DSR(b) 0,00). Neste ativo nunca passou pela fila. Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo, em caixa",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-10-01",
+   "motivo": null,
+   "inicio": "2026-09-01",
+   "ultimo_pregao": "2026-09-30",
+   "valor": 1000.0,
+   "resultado": 0.0,
+   "regua_valor": 961.8603,
+   "regua_resultado": -0.0381397,
+   "queda_maxima": 0.0,
+   "operacoes": 0,
+   "custos": 0.0,
+   "dividendos": 0.0,
+   "imposto_pago": 0.0,
+   "caixa": 1000.0,
+   "posicoes": {},
+   "ultima_decisao": {
+    "dia": "2026-09-30",
+    "para": "2026-10-01",
+    "texto": "não operar: seguir em caixa (fechamento abaixo da média de 10 meses)"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-24",
+     1000.0,
+     983.560312
+    ],
+    [
+     "2026-09-25",
+     1000.0,
+     987.000314
+    ],
+    [
+     "2026-09-28",
+     1000.0,
+     956.000314
+    ],
+    [
+     "2026-09-29",
+     1000.0,
+     965.960336
+    ],
+    [
+     "2026-09-30",
+     1000.0,
+     961.8603
+    ]
+   ]
+  },
+  "virada-spy": {
+   "identidade": "VIRADA-EUA|v1|SPY|virada do mês (4 pregões)|abertura do pregão seguinte, ação inteira",
+   "estrategia": "VIRADA-EUA-v1",
+   "mercado": "eua",
+   "alvo": "SPY",
+   "horizonte": "virada do mês (4 pregões)",
+   "execucao": "abertura do pregão seguinte, ação inteira",
+   "moeda": "USD",
+   "capital": 1000,
+   "estagio": "observacao",
+   "veredito": "Regra VIRADA-EUA-v1 REPROVADA no laboratório em 27/10/2026 (percentil 73,8 do sorteio, DSR(b) 0,00). Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-10-01",
+   "motivo": null,
+   "inicio": "2026-09-01",
+   "ultimo_pregao": "2026-09-30",
+   "valor": 1004.589535,
+   "resultado": 0.0045895350000000334,
+   "regua_valor": 1001.121068,
+   "regua_resultado": 0.0011210680000000028,
+   "queda_maxima": -0.005690379610562846,
+   "operacoes": 3,
+   "custos": 1.1505,
+   "dividendos": 0.0,
+   "imposto_pago": 0.0,
+   "caixa": 241.9595,
+   "posicoes": {
+    "SPY": 1.0
+   },
+   "ultima_decisao": {
+    "dia": "2026-09-30",
+    "para": "2026-10-01",
+    "texto": "seguir comprado em SPY"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-24",
+     1008.792768,
+     1005.671055
+    ],
+    [
+     "2026-09-25",
+     1008.792768,
+     1009.841038
+    ],
+    [
+     "2026-09-28",
+     1008.792768,
+     1004.101048
+    ],
+    [
+     "2026-09-29",
+     1008.792768,
+     1002.691075
+    ],
+    [
+     "2026-09-30",
+     1004.589535,
+     1001.121068
+    ]
+   ]
+  },
+  "mm20-bova11": {
+   "identidade": "MM20|v1|BOVA11|diário|abertura do pregão seguinte, cota inteira (fracionário)",
+   "estrategia": "MM20-v1",
+   "mercado": "b3",
+   "alvo": "BOVA11",
+   "horizonte": "diário",
+   "execucao": "abertura do pregão seguinte, cota inteira (fracionário)",
+   "moeda": "BRL",
+   "capital": 1000,
+   "estagio": "observacao",
+   "veredito": "Regra MM20-v1 REPROVADA no laboratório em 26/10/2026 (BTC/ETH: abaixo do p90 do sorteio). Neste ativo nunca passou pela fila. Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo, em caixa",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-10-01",
+   "motivo": null,
+   "inicio": "2026-09-01",
+   "ultimo_pregao": "2026-09-30",
+   "valor": 1009.608719,
+   "resultado": 0.009608719000000043,
+   "regua_valor": 1028.258759,
+   "regua_resultado": 0.028258759000000078,
+   "queda_maxima": -0.023503103345333454,
+   "operacoes": 2,
+   "custos": 1.7956,
+   "dividendos": 0.0,
+   "imposto_pago": 1.6957,
+   "caixa": 1009.6087,
+   "posicoes": {},
+   "ultima_decisao": {
+    "dia": "2026-09-30",
+    "para": "2026-10-01",
+    "texto": "comprar BOVA11 na próxima abertura"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-24",
+     1012.208726,
+     1012.208726
+    ],
+    [
+     "2026-09-25",
+     1011.304376,
+     1011.958787
+    ],
+    [
+     "2026-09-28",
+     1011.304376,
+     1008.758713
+    ],
+    [
+     "2026-09-29",
+     1011.304376,
+     1013.108765
+    ],
+    [
+     "2026-09-30",
+     1009.608719,
+     1028.258759
+    ]
+   ]
+  },
+  "mm10m-smal11": {
+   "identidade": "MM10M|v1|SMAL11|mensal|abertura do pregão seguinte, cota inteira (fracionário)",
+   "estrategia": "MM10M-v1",
+   "mercado": "b3",
+   "alvo": "SMAL11",
+   "horizonte": "mensal",
+   "execucao": "abertura do pregão seguinte, cota inteira (fracionário)",
+   "moeda": "BRL",
+   "capital": 1000,
+   "estagio": "observacao",
+   "veredito": "Regra MM10M-v1 REPROVADA no laboratório em 27/10/2026 (SPY e BOVA11: abaixo do p90 do sorteio, DSR(b) 0,00). Neste ativo nunca passou pela fila. Roda só como OBSERVAÇÃO.",
+   "situacao": "ativo, em caixa",
+   "atividade": "aguardando mercado: próximo fechamento em 2026-10-01",
+   "motivo": null,
+   "inicio": "2026-09-01",
+   "ultimo_pregao": "2026-09-30",
+   "valor": 1000.0,
+   "resultado": 0.0,
+   "regua_valor": 1034.398003,
+   "regua_resultado": 0.034398002999999955,
+   "queda_maxima": 0.0,
+   "operacoes": 0,
+   "custos": 0.0,
+   "dividendos": 0.0,
+   "imposto_pago": 0.0,
+   "caixa": 1000.0,
+   "posicoes": {},
+   "ultima_decisao": {
+    "dia": "2026-09-30",
+    "para": "2026-10-01",
+    "texto": "não operar: seguir em caixa (fechamento abaixo da média de 10 meses)"
+   },
+   "capital_insuficiente": null,
+   "conciliacao": "ok",
+   "historico": [
+    [
+     "2026-09-24",
+     1000.0,
+     1016.577973
+    ],
+    [
+     "2026-09-25",
+     1000.0,
+     1021.077973
+    ],
+    [
+     "2026-09-28",
+     1000.0,
+     1008.028
+    ],
+    [
+     "2026-09-29",
+     1000.0,
+     1013.878014
+    ],
+    [
+     "2026-09-30",
+     1000.0,
+     1034.398003
+    ]
+   ]
+  }
+ }
+}
