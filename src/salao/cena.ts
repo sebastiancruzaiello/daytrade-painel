@@ -4,16 +4,17 @@
 import { KS, NOME, COR, C, dayIdx, fmt, pct, dBR } from "../dados/formato";
 import { segurar, pregao, idxAte } from "../dados/mercados";
 import { criarCamera } from "./camera";
-import { planta, ALA } from "../dados/elenco";
+import { planta, ALA, ondeFica, vagasLazer, LAZER } from "../dados/elenco";
 import { ESTADOS } from "../dados/estados";
 import { rotuloFinanceiro, rotuloSituacao } from "../dados/escritorio";
 
 const FONT = '"Chakra Petch", "Segoe UI", sans-serif';
 // O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22; a ala dos robôs, gerada da lista de
-// entidades (src/dados/elenco.ts), de x 22 a 34.
+// entidades (src/dados/elenco.ts), de x 22 a 44. Na frente (y 14 a 20, de x 12 a 44) fica a área de lazer: quem está
+// sem posição aberta espera ali (regra de 28/10/2026: na mesa só quem comprou).
 const CURTO = { "mm20-btc": "MM20 BTC", "mm20-eth": "MM20 ETH", "momentum": "Momentum" };
 const AZUL = "#8fb0ff"; // títulos da ala de ações e dos grupos por mercado
-const W = 1550, H = 960, TW = 64, TH = 32, N = 12, NX = 34, NA = 22, OX = 420, OY = 200;
+const W = 1960, H = 1280, TW = 64, TH = 32, N = 22, N0 = 12, NX = 44, NA = 22, OX = 480, OY = 200;
 const P = (x, y, z = 0) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2 - z];
 
 const SEATS = {
@@ -25,7 +26,7 @@ const LOUNGE = [[1.3, 8.4], [4.2, 8.6], [1.5, 9.9], [4.3, 10.0], [1.4, 10.5], [2
 const OUT = [-0.8, 10.25];
 const GUARD = { x: 10.3, y: 2.4 };
 
-export type Area = "tudo" | "cripto" | "acoes" | "robos" | "apoio";
+export type Area = "tudo" | "cripto" | "acoes" | "robos" | "lazer" | "apoio";
 export type Cena = { mostrar: (s: EstadoCena) => void; destruir: () => void; mais: () => void; menos: () => void; inicio: () => void; selecionar: (id: string | null) => void; focar: (a: Area) => void };
 // periodo: "dia" ou "acumulado" (rótulo de ganho/perda); atividades: o que cada agente ou apoio comprovadamente fez.
 export type EstadoCena = { D: any; dias: any[]; di: number; pararTeste: boolean; vivo: any | null; aoVivo: boolean; ex: any; entidades: any[]; periodo?: string; atividades?: Record<string, { txt: string; tom: string }> };
@@ -65,8 +66,14 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     poly([a, b, B, A], left); poly([b, c, Cc, B], right); poly([A, B, Cc, Dd], top);
   }
   function floor() {
-    for (let x = 0; x < NX; x++) for (let y = 0; y < N; y++) poly([P(x, y), P(x + 1, y), P(x + 1, y + 1), P(x, y + 1)], x < N ? ((x + y) % 2 ? "#222d33" : "#1e282e") : x < NA ? ((x + y) % 2 ? "#252a33" : "#21262e") : ((x + y) % 2 ? "#232b2a" : "#1f2626"));
-    poly([P(N, 5.9), P(NA, 5.9), P(NA, 6.1), P(N, 6.1)], "#3a3f4a");
+    for (let x = 0; x < NX; x++) for (let y = 0; y < N; y++) {
+      if (x < N0 && y >= N0) continue;  // o salão de cripto acaba em y 12; a frente dele fica vazia
+      const cor = y >= 14 ? ((x + y) % 2 ? "#2d2833" : "#29242f")
+        : x < N0 ? ((x + y) % 2 ? "#222d33" : "#1e282e") : x < NA ? ((x + y) % 2 ? "#252a33" : "#21262e") : ((x + y) % 2 ? "#232b2a" : "#1f2626");
+      poly([P(x, y), P(x + 1, y), P(x + 1, y + 1), P(x, y + 1)], cor);
+    }
+    poly([P(N0, 5.9), P(NA, 5.9), P(NA, 6.1), P(N0, 6.1)], "#3a3f4a");
+    poly([P(N0, 13.92), P(NX, 13.92), P(NX, 14.08), P(N0, 14.08)], "#4a3f57");  // linha que separa o escritório do lazer
     poly([P(0.4, 8), P(4.6, 8), P(4.6, 11.6), P(0.4, 11.6)], "#2b2a35");
   }
   function wallText(x, y, z, txt, size, color) {
@@ -77,9 +84,9 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   function walls() {
     const h = 170;
     poly([P(0, 0), P(NX, 0), P(NX, 0, h), P(0, 0, h)], "#18232a");
-    poly([P(0, 0), P(0, N), P(0, N, h), P(0, 0, h)], "#141d23");
+    poly([P(0, 0), P(0, N0), P(0, N0, h), P(0, 0, h)], "#141d23");
     poly([P(0, 0), P(NX, 0), P(NX, 0, 22), P(0, 0, 22)], "#1f2c33");
-    poly([P(0, 0), P(0, N), P(0, N, 22), P(0, 0, 22)], "#1a252b");
+    poly([P(0, 0), P(0, N0), P(0, N0, 22), P(0, 0, 22)], "#1a252b");
     wallText(0, 7.2, 118, "DAYTRADE", 34, C.accent);
     wallText(0, 7.2, 96, "simulação ao vivo · aovivo-v1", 13, C.muted);
     poly([P(0, 9.6), P(0, 10.9), P(0, 10.9, 96), P(0, 9.6, 96)], "#0c1114");
@@ -87,7 +94,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     wallText(0, 10.8, 112, "SAÍDA", 13, C.bad);
     backText(13.9, 150, "AÇÕES · EUA e B3", 22, AZUL);
     backText(23.2, 150, "ALA DOS ROBÔS", 22, C.good);
-    backText(23.2, 132, S && !S.aoVivo ? "estado de agora (o ensaio é só do salão de cripto)" : "gerada da lista: quem existe aparece aqui", 10, C.muted);
+    backText(23.2, 132, S && !S.aoVivo ? "estado de agora (o ensaio é só do salão de cripto)" : "na mesa só quem está comprado · sem posição vai para a área de lazer, na frente", 10, C.muted);
   }
   // Texto pintado na parede do fundo (a que corre ao longo de x).
   function backText(x, z, txt, size, color) {
@@ -182,9 +189,15 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
         if (st === "parada") { c.mode = "sair"; c.tx = OUT[0]; c.ty = OUT[1]; }
         else {
           if (c.gone) { c.gone = false; c.x = OUT[0]; c.y = OUT[1]; }
-          // Em caixa também fica no posto, monitorando: o café não é lugar de quem está trabalhando (28/10/2026).
-          if (st === "ativa" && (holding || aoVivo || k !== "momentum")) { c.mode = "mesa"; c.tx = c.seat.x; c.ty = c.seat.y; c.coin = holding || k !== "momentum" ? coin : null; }
-          else { if (c.mode !== "lounge") { const s = LOUNGE[(KS.indexOf(k) * 3 + i) % 7]; c.tx = s[0]; c.ty = s[1]; } c.mode = "lounge"; c.coin = k === "momentum" ? null : coin; }
+          // Regra de 28/10/2026: na mesa só quem tem posição aberta (comprado, mesmo esperando); sem posição vai para o
+          // café ou a sinuca. Pausa, falha e falta de dado nunca parecem lazer: em pé ao lado da mesa, com o alerta.
+          const ent = aoVivo ? (S.entidades || []).find(e => e.id === "cripto:" + k) : null;
+          if (st === "pausada" || (ent && ondeFica(ent) === "alerta")) {
+            c.mode = "alerta"; c.tx = c.seat.x + 0.2; c.ty = c.seat.y + 0.6; c.coin = holding ? coin : null;
+            c.alerta = st === "pausada" ? "pausado pelo risco" : (ent.dim ? rotuloSituacao(ent, ent.dim).txt : CURTO_ESTADO[ent.estado] || ent.estado);
+          }
+          else if (st === "ativa" && holding) { c.mode = "mesa"; c.tx = c.seat.x; c.ty = c.seat.y; c.coin = coin; }
+          else { if (c.mode !== "lounge") { const s = LOUNGE[(KS.indexOf(k) * 3 + i) % 7]; c.tx = s[0]; c.ty = s[1]; } c.mode = "lounge"; c.coin = null; }
         }
       });
     });
@@ -215,8 +228,12 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.fillStyle = "#2a2320"; g.beginPath(); g.arc(sx, by - 29, 8.2, Math.PI * 1.02, Math.PI * 1.98); g.fill();
     if (sit) { g.fillStyle = "#2a2320"; g.beginPath(); g.arc(sx, by - 27, 8.2, Math.PI * 1.1, Math.PI * 1.9, true); g.fill(); }
     nome(`robo:${c.conta}:${c.i}`, sx, sy, c.conta === "momentum" ? "Momentum " + (c.i + 1) : NOME[c.conta], col);
-    // Ao vivo, ganho/perda da conta inteira só na primeira cadeira (as três do Momentum são a mesma conta).
-    if (S.aoVivo && c.i === 0) { const x = (S.entidades || []).find(e => e.id === "cripto:" + c.conta); if (x) rotulosDe(x, sx, by); }
+    // Ao vivo, ganho/perda da conta inteira só em quem está na mesa (a primeira cadeira ocupada: as três do Momentum
+    // são a mesma conta). No café ou na sinuca, só o nome. Em alerta, o alerta.
+    if (c.mode === "alerta" && !walking) rotulo(sx, by - 38, [{ txt: "⚠ " + (c.alerta || "alerta"), col: C.warn, forte: true }]);
+    else if (S.aoVivo && sit && chars.find(o => o.conta === c.conta && o.mode === "mesa") === c) {
+      const x = (S.entidades || []).find(e => e.id === "cripto:" + c.conta); if (x) rotulosDe(x, sx, by, "mesa");
+    }
     if (c.bubble && c.bt > 0) bubble(sx + 14, by - 60, c.bubble, c.bcol);
   }
   function drawDesk(x, y, w, label, col) {
@@ -331,8 +348,8 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
 
   /* ---------- ala de ações (EUA e B3): só referências, laboratório e equipe de apoio ---------- */
   const ALAS = [
-    { id: "ref:SPY", y: 2.2, chave: "spy", nome: "SPY", rotulo: "SÓ SEGURAR SPY", lab: "LABORATÓRIO EUA", labChave: "eua", cor: "#e8a25b", agente: { id: "agente:revisor", nome: "Revisor", cor: "#c9b38a", label: "pareceres" } },
-    { id: "ref:BOVA11", y: 7.6, chave: "bova", nome: "BOVA11", rotulo: "SÓ SEGURAR BOVA11", lab: "LABORATÓRIO B3", labChave: "b3", cor: "#5fcf8f", agente: { id: "agente:formalizador", nome: "Formalizador", cor: "#a99ae0", label: "regra lacrada" } },
+    { id: "ref:SPY", conta: "bolsa:eua:segurar-spy", y: 2.2, chave: "spy", nome: "SPY", rotulo: "SÓ SEGURAR SPY", lab: "LABORATÓRIO EUA", labChave: "eua", cor: "#e8a25b", agente: { id: "agente:revisor", nome: "Revisor", cor: "#c9b38a", label: "pareceres" } },
+    { id: "ref:BOVA11", conta: "bolsa:b3:segurar-bova11", y: 7.6, chave: "bova", nome: "BOVA11", rotulo: "SÓ SEGURAR BOVA11", lab: "LABORATÓRIO B3", labChave: "b3", cor: "#5fcf8f", agente: { id: "agente:formalizador", nome: "Formalizador", cor: "#a99ae0", label: "regra lacrada" } },
   ];
   // Equipe de apoio (lado direito da ala): robôs do n8n e os ajudantes da rotina diária.
   const APOIO = [
@@ -428,9 +445,12 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
       objs.push({ k: 13 + a.y + 0.5, f: () => drawDesk(13.0, a.y, 3.0, a.rotulo, a.cor) });
       objs.push({ k: 16.6 + a.y + 0.5, f: () => { drawDesk(16.6, a.y, 2.7, a.lab, C.accent); drawLabMonitor(17.1, a.y - 0.05, ex.lab[a.labChave], a.lab.replace("LABORATÓRIO", "LAB")); } });
 
-      // Robô de referência: sempre sentado, porque só segura o fundo.
+      // Robô de referência (só segura o fundo). Quando a simulação da bolsa manda a conta dele, ele vive na ala dos
+      // robôs e segue a regra da mesa de lá; aqui fica só a cadeira, para não aparecer duas vezes.
       objs.push({ k: 15.4 + a.y + 1.5 + 0.3, f: () => {
-        const [sx, sy] = P(15.4, a.y + 1.5); anel(a.id, sx, sy);
+        const [sx, sy] = P(15.4, a.y + 1.5);
+        if ((S.entidades || []).some(x => x.id === a.conta)) { cadeiraVazia(sx, sy); return; }
+        anel(a.id, sx, sy);
         figura(sx, sy, a.cor, { sentado: true, t, fase: n });
         nome(a.id, sx, sy, "Segurar " + a.nome, a.cor);
       } });
@@ -463,34 +483,69 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   const TOM_FIN = { bom: C.good, ruim: C.bad, neutro: "#c9d1cd", aviso: C.warn };
   // Acima da cabeça, em duas linhas: o ganho/perda do período (verde, vermelho ou neutro, com sinal e moeda) e a
   // situação (comprado, em caixa, monitorando, sem dado...). A cor do dinheiro nunca é a cor da saúde.
-  // compacto (ala dos robôs, onde a fila é apertada): a situação só aparece quando pede atenção; o resto fica na ficha.
-  function rotulosDe(x, sx, by, compacto = false) {
-    const fin = rotuloFinanceiro(x.res, S.periodo || "dia");
-    const sit = x.dim ? rotuloSituacao(x, x.dim) : null;
+  // onde = "mesa": o dinheiro em cima e o que está comprado embaixo. "alerta": só o alerta (falha, pausa, sem dado).
+  // "lazer": nada de dinheiro; só um aviso curto quando já decidiu comprar na próxima abertura.
+  const POS_COR = "#c9d1cd";
+  const curtoPos = (ps) => !ps || !ps.length ? "" : (ps[0].length > 16 ? ps[0].slice(0, 15) + "…" : ps[0]) + (ps.length > 1 ? ` +${ps.length - 1}` : "");
+  function rotulosDe(x, sx, by, onde = "mesa") {
     const ls = [];
-    if (fin && S.aoVivo) ls.push({ txt: fin.txt, col: TOM_FIN[fin.tom], forte: true });
-    else if (!sit && x.resultado != null) ls.push({ txt: pct(x.resultado), col: x.resultado > 0 ? C.good : x.resultado < 0 ? C.bad : C.muted });
-    if (sit && (!compacto || !ls.length || sit.tom === "ruim" || sit.tom === "aviso")) ls.push({ txt: sit.txt, col: TOM_COR[sit.tom] || C.muted });
+    if (onde === "alerta") {
+      const sit = x.dim ? rotuloSituacao(x, x.dim) : { txt: CURTO_ESTADO[x.estado] || "sem dado", tom: "aviso" };
+      ls.push({ txt: "⚠ " + sit.txt, col: sit.tom === "ruim" ? C.bad : C.warn, forte: true });
+    } else if (onde === "mesa") {
+      const fin = rotuloFinanceiro(x.res, S.periodo || "dia");
+      if (fin && S.aoVivo) ls.push({ txt: fin.txt, col: TOM_FIN[fin.tom], forte: true });
+      else if (x.resultado != null) ls.push({ txt: pct(x.resultado), col: x.resultado > 0 ? C.good : x.resultado < 0 ? C.bad : C.muted, forte: true });
+      if (x.posicoes && x.posicoes.length) ls.push({ txt: "comprado · " + curtoPos(x.posicoes), col: POS_COR });
+    } else if (x.decisao && x.decisao.tipo === "vai") ls.push({ txt: "compra na próxima abertura", col: "#8fb0ff" });
+    else if (x.estado === "sem-capital") ls.push({ txt: "sem capital", col: C.muted });
     rotulo(sx, by - 38, ls);
   }
-  function drawEntidade(x, l, t, n) {
-    const id = "ent:" + x.id, [sx, sy] = P(l.x, l.y);
+  // Sentado = comprado (operando, mesmo esperando). Em pé no lugar, com ⚠ = falha, pausa, parado ou sem dado (apagado
+  // quando parado, sem conexão ou sem telemetria). Na área de lazer = sem posição: a cadeira dele fica vazia.
+  function drawEntidade(x, sx, sy, t, n, onde) {
+    const id = "ent:" + x.id;
     anel(id, sx, sy);
-    // Sentado no posto = trabalhando (monitorando, em caixa ou comprado). Apagado = parado, sem conexão ou sem
-    // telemetria: continua visível e identificável, nunca vai para o café.
-    const apagado = !!x.semTelemetria || x.estado === "parado" || x.estado === "falha-conexao";
+    const apagado = onde === "alerta" && (!!x.semTelemetria || x.estado === "parado" || x.estado === "falha-conexao");
     const cor = COR_MERCADO[x.mercado] || C.accent;
-    const by = figura(sx, sy, x.tipo === "robo" ? cor : "#8a949c", { sentado: !apagado, apagado, t, fase: n * 0.7 });
+    const by = figura(sx, sy, x.tipo === "robo" ? cor : "#8a949c", { sentado: onde === "mesa", apagado, t, fase: n * 0.7 });
     if (x.tipo !== "robo") { g.fillStyle = cor; g.fillRect(sx - 9, by - 13, 18, 3); }  // régua ou carteira: faixa na cor do mercado
-    rotulosDe(x, sx, by, true);
+    rotulosDe(x, sx, by, onde);
     nome(id, sx, sy, curtoNome(x.nome), x.tipo === "robo" ? cor : "#b9c2c8");
   }
-  // Desenhada depois do resto (fica à direita e na frente): por fileira, primeiro a mesa, depois quem senta nela.
+  function cadeiraVazia(sx, sy) {
+    g.fillStyle = "rgba(0,0,0,.25)"; g.beginPath(); g.ellipse(sx, sy, 10, 4, 0, 0, 7); g.fill();
+    g.fillStyle = "#3a464d"; g.fillRect(sx - 9, sy - 16, 18, 6); g.fillRect(sx - 2, sy - 10, 4, 10); g.fillRect(sx - 9, sy - 30, 18, 4);
+    g.fillStyle = "#2f3a40"; g.fillRect(sx - 8, sy - 27, 2, 11); g.fillRect(sx + 6, sy - 27, 2, 11);
+  }
+  // Móveis da área de lazer: três mesas de sinuca, dois sofás e o café (balcão com a máquina).
+  function moveisLazer() {
+    const legenda = (x, y, z, txt) => { const [tx, ty] = P(x, y, z); g.font = `600 9px ${FONT}`; g.fillStyle = C.muted; g.textAlign = "center"; g.fillText(txt, tx, ty); g.textAlign = "left"; };
+    [17.6, 26.0, 34.4].forEach(x => {
+      box(x, 14.6, 2.4, 1.25, 20, "#1f6b4d", "#3a2a20", "#47342a");
+      box(x + 0.15, 14.75, 2.1, 0.95, 2, "#2a8a63", "#2a8a63", "#2a8a63", 20);
+      legenda(x + 1.2, 15.2, 30, "sinuca");
+    });
+    [21.9, 30.3].forEach(x => { box(x, 14.75, 2.0, 0.75, 14, "#5b3f52", "#47313f", "#503848"); box(x, 14.55, 2.0, 0.2, 28, "#5b3f52", "#47313f", "#503848"); legenda(x + 1, 15.1, 34, "sofá"); });
+    box(38.8, 14.6, 3.4, 0.9, 30, "#6b5440", "#4f3e2f", "#5a4636");
+    box(39.4, 14.7, 0.6, 0.5, 26, "#6b737a", "#454c52", "#545b61", 30);
+    legenda(40.5, 15.05, 64, "café");
+  }
+  // Desenhada depois do resto (fica à direita e na frente): por fileira, primeiro a mesa, depois quem senta nela; por
+  // último a área de lazer, de trás para a frente (fileira de trás, móveis, fileira da frente).
+  let lazerChave = "", lazerAtual = vagasLazer([]);
   function alaRobos(t) {
     const lista = S.entidades || [], pl = plantaDe(lista), porId = new Map(lista.map(x => [x.id, x]));
+    const onde = new Map(pl.lugares.map(l => [l.id, porId.get(l.id) ? ondeFica(porId.get(l.id)) : "alerta"]));
+    const noLazer = pl.lugares.filter(l => onde.get(l.id) === "lazer").map(l => l.id);
+    const chave = noLazer.join("|");
+    if (chave !== lazerChave) { lazerChave = chave; lazerAtual = vagasLazer(noLazer); }
+    const naMesa = pl.lugares.filter(l => onde.get(l.id) === "mesa").length;
     // Nome da faixa na ponta direita da primeira mesa, onde não há ninguém sentado.
     placasAla = pl.faixas.map(fx => [ALA.x1 + 0.2, fx.fileiras[0].y - 0.7, `${fx.nome.toUpperCase()} · ${fx.fileiras.reduce((a, f) => a + f.n, 0)}`, COR_MERCADO[fx.nome] || AZUL]);
+    placasAla.push([LAZER.x0 + 2.1, 12.8, `ÁREA DE LAZER (na frente) · ${noLazer.length} sem posição · ${naMesa} ${naMesa === 1 ? "comprado" : "comprados"} na mesa da ala`, C.staff]);
     if (pl.foraDaAla.length) placasAla.push([ALA.x0 + 5.3, ALA.y1 - 0.1, `+${pl.foraDaAla.length} sem lugar: veja a aba Robôs`, C.warn]);
+    if (lazerAtual.semVaga.length) placasAla.push([LAZER.x0 + 1.4, N + 1.3, `+${lazerAtual.semVaga.length} sem vaga no lazer: veja a aba Robôs`, C.warn]);
     if (!pl.lugares.length) placasAla.push([ALA.x0 + 5.3, 5.5, S.aoVivo ? "nenhum robô chegou na leitura" : "liga o ao vivo para ver os robôs", C.muted]);
     box(22.1, 0, 0.3, 3.6, 46, "#2c3940", "#202a30", "#26323a");
     box(22.1, 8.4, 0.3, 3.6, 46, "#2c3940", "#202a30", "#26323a");
@@ -498,8 +553,16 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     pl.faixas.forEach(fx => fx.fileiras.forEach(fl => fileiras.push({ y: fl.y, cor: COR_MERCADO[fx.nome] || C.accent })));
     fileiras.forEach(fl => {
       drawDesk(ALA.x0 + 0.05, fl.y - 1.05, ALA.x1 - ALA.x0 - 0.1, "", fl.cor);
-      pl.lugares.filter(l => l.y >= fl.y - 1e-6 && l.y < fl.y + 0.5).forEach((l, n) => { const x = porId.get(l.id); if (x) drawEntidade(x, l, t, n); });
+      pl.lugares.filter(l => l.y >= fl.y - 1e-6 && l.y < fl.y + 0.5).forEach((l, n) => {
+        const x = porId.get(l.id), [sx, sy] = P(l.x, l.y), o = onde.get(l.id);
+        if (!x) return;
+        if (o === "lazer") cadeiraVazia(sx, sy); else drawEntidade(x, sx, sy, t, n, o);
+      });
     });
+    moveisLazer();
+    const itens = [];
+    lazerAtual.vagas.forEach((v, n) => { const x = porId.get(v.id); if (x) itens.push({ k: v.y + v.x * 1e-3, f: () => { const [sx, sy] = P(v.x, v.y); drawEntidade(x, sx, sy, t, n, "lazer"); } }); });
+    itens.sort((a, b) => a.k - b.k).forEach(i => i.f());
   }
 
   function frame(t) {
@@ -545,7 +608,8 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     { p: P(10.4, 2.4, 40), zoom: 2.6 }, { p: P(2.4, 9.8, 20), zoom: 2.4 }, { p: P(0.9, 3.4, 40), zoom: 2.8 },
     { p: P(14.5, 2.9, 40), zoom: 2.6 }, { p: P(18.6, 2.9, 40), zoom: 2.6 }, { p: P(14.5, 8.3, 40), zoom: 2.6 }, { p: P(18.6, 8.3, 40), zoom: 2.6 },
     { p: P(17.0, 0.05, 80), zoom: 2.1 }, { p: P(20.9, 6.0, 30), zoom: 2.0 },
-    { p: P(28.3, 2.6, 30), zoom: 2.0 }, { p: P(28.3, 6.0, 30), zoom: 2.0 }, { p: P(28.3, 9.4, 30), zoom: 2.0 },
+    { p: P(33, 2.8, 30), zoom: 1.9 }, { p: P(33, 7.0, 30), zoom: 1.9 }, { p: P(33, 11.0, 30), zoom: 1.9 },
+    { p: P(20, 18.0, 30), zoom: 1.9 }, { p: P(34, 18.0, 30), zoom: 1.9 },
   ].map(a => ({ x: a.p[0], y: a.p[1], raio: 110, zoom: a.zoom }));
   // Clique (ou cursor por cima): acha a pessoa mais próxima do ponto, olhando o corpo inteiro (pés até a cabeça).
   function tocar(x, y, soOlhar) {
@@ -569,7 +633,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     selecionar: (id) => { selecionado = id; },
     // Foco por área: um clique leva a câmera para o mercado ou a equipe, com zoom de leitura.
     focar(a) {
-      const alvo = { cripto: [P(5.2, 6.0), 1.9], acoes: [P(16.5, 5.6), 2.0], robos: [P(28.3, 6.2), 1.9], apoio: [P(20.6, 5.8), 2.4] }[a];
+      const alvo = { cripto: [P(5.2, 6.0), 2.2], acoes: [P(16.5, 5.6), 2.3], robos: [P(33, 7.0), 1.75], lazer: [P(28.2, 18.0), 1.55], apoio: [P(20.6, 5.8), 2.6] }[a];
       if (!alvo) camera.inicio(); else camera.ir(alvo[0][0], alvo[0][1] - 30, alvo[1]);
     },
     mostrar(s) {

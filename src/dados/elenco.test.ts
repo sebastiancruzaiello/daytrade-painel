@@ -2,7 +2,7 @@
 // gerado na ala, sem cadeira escrita à mão (auditoria de 28/10/2026, achados A e B).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { elencoDeLinhas, reconciliar, planta, desenhados, FIXOS, ALA, POR_FILEIRA, type Elenco } from "./elenco.ts";
+import { elencoDeLinhas, reconciliar, planta, desenhados, FIXOS, ALA, POR_FILEIRA, ondeFica, vagasLazer, LAZER, type Elenco } from "./elenco.ts";
 import type { Entidade, Mercado } from "./estados";
 
 function ent(id: string, mercado: Mercado, extra: Partial<Entidade> = {}): Entidade {
@@ -90,4 +90,24 @@ test("o elenco de hoje (20 fora do cripto diário) cabe inteiro", () => {
   const p = planta(hoje);
   assert.equal(p.foraDaAla.length, 0);
   assert.equal(desenhados(hoje, p), hoje.length);
+});
+
+test("mesa só para quem tem posição; sem posição vai para o lazer; falha, pausa e sem dado ficam com alerta", () => {
+  assert.equal(ondeFica(ent("lote:a", "EUA", { posicoes: ["9 EFA"] })), "mesa");
+  assert.equal(ondeFica(ent("lote:a", "EUA", { estado: "aguardando-mercado", posicoes: ["9 EFA"] })), "mesa");  // comprado e esperando = operando
+  assert.equal(ondeFica(ent("lote:a", "EUA", { posicoes: [] })), "lazer");
+  assert.equal(ondeFica(ent("lote:a", "EUA", { estado: "sem-capital", posicoes: [] })), "lazer");
+  for (const estado of ["parado", "pausado", "falha-conexao", "dado-velho", "aguardando-dado"] as const)
+    assert.equal(ondeFica(ent("lote:a", "EUA", { estado, posicoes: ["9 EFA"] })), "alerta", estado);
+  assert.equal(ondeFica({ ...ent("lote:a", "EUA", { posicoes: ["1 SPY"] }), semTelemetria: true }), "alerta");
+});
+
+test("área de lazer: uma vaga por robô, sem repetir, dentro da área e na mesma ordem a cada leitura", () => {
+  const ids = Array.from({ length: 30 }, (_, i) => "lote:r" + String(i).padStart(2, "0"));
+  const a = vagasLazer(ids), b = vagasLazer([...ids].reverse());
+  assert.deepEqual(a, b);
+  assert.equal(a.vagas.length + a.semVaga.length, 30);
+  assert.equal(new Set(a.vagas.map(v => `${v.x.toFixed(2)},${v.y.toFixed(2)}`)).size, a.vagas.length);
+  assert.ok(a.vagas.every(v => v.x >= LAZER.x0 && v.x <= LAZER.x1 && v.y >= LAZER.y0 && v.y <= LAZER.y1));
+  assert.equal(a.semVaga.length, 0);
 });

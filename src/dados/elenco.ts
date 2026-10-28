@@ -67,13 +67,14 @@ export function reconciliar(lista: Entidade[], elenco: Elenco | null, motivoFalt
 }
 
 // ---------- lugares na ala gerada ----------
-// A ala fica em x 23–33,6 e y 0,8–11,6 (coordenadas do chão da cena). Uma faixa por mercado; cada fileira tem uma
-// mesa comprida e até POR_FILEIRA lugares. Se não couber tudo, os que sobram não são desenhados e a conta diz
-// quantos ficaram de fora (nunca se esconde em silêncio).
-export const ALA = { x0: 23, x1: 33.6, y0: 0.8, y1: 11.6 };
-export const POR_FILEIRA = 7;
+// A ala fica em x 23–43 e y 0,8–13,3 (coordenadas do chão da cena). Uma faixa por mercado; cada fileira tem uma
+// mesa comprida e até POR_FILEIRA lugares, bem afastados para nome e valor não se cobrirem (pedido de 28/10/2026).
+// Se não couber tudo, os que sobram não são desenhados e a conta diz quantos ficaram de fora (nunca se esconde em
+// silêncio).
+export const ALA = { x0: 23, x1: 43, y0: 0.8, y1: 13.3 };
+export const POR_FILEIRA = 6;
 const PASSO_X = (ALA.x1 - ALA.x0) / POR_FILEIRA;
-const FILEIRA = 1.95;   // distância entre fileiras
+const FILEIRA = 2.55;   // distância entre fileiras
 const TITULO = 0.55;    // espaço do nome da faixa
 const ORDEM: string[] = ["Cripto", "EUA", "B3"];
 
@@ -104,7 +105,7 @@ export function planta(lista: Entidade[]): Planta {
       const daFileira = membros.slice(i, i + POR_FILEIRA);
       faixa.fileiras.push({ y: fy, n: daFileira.length });
       // lugares alternados um pouco para a frente e para trás, para os nomes não se encostarem
-      daFileira.forEach((m, j) => lugares.push({ id: m.id, x: ALA.x0 + PASSO_X * (j + 0.5), y: fy + (j % 2 ? 0.3 : 0), faixa: nome }));
+      daFileira.forEach((m, j) => lugares.push({ id: m.id, x: ALA.x0 + PASSO_X * (j + 0.5), y: fy + (j % 2 ? 0.35 : 0), faixa: nome }));
       y += FILEIRA;
     }
     if (faixa.fileiras.length) faixas.push(faixa);
@@ -116,4 +117,35 @@ export function planta(lista: Entidade[]): Planta {
 // Quantos aparecem desenhados: os da ala mais os fixos do salão antigo que estão na lista.
 export function desenhados(lista: Entidade[], p: Planta) {
   return p.lugares.length + lista.filter(x => FIXOS.has(x.id)).length;
+}
+
+// ---------- mesa ou área de lazer ----------
+// Regra do Sebastian (28/10/2026): na mesa fica só quem tem posição aberta (comprou moeda ou ação), mesmo parado
+// esperando; quem está sem posição, inclusive esperando sinal, vai para a área de lazer (sinuca, café). Falha, pausa,
+// parada e falta de dado NUNCA parecem lazer: ficam em pé no próprio lugar, com o alerta à vista.
+export type Onde = "mesa" | "alerta" | "lazer";
+const ALERTA = new Set(["parado", "pausado", "falha-conexao", "dado-velho", "aguardando-dado"]);
+export function ondeFica(x: Pick<Entidade, "estado" | "posicoes" | "semTelemetria">): Onde {
+  if (x.semTelemetria || ALERTA.has(x.estado)) return "alerta";
+  return x.posicoes && x.posicoes.length ? "mesa" : "lazer";
+}
+
+// Área de lazer: faixa da frente do escritório (x 13,4–43, y 14,2–21,6). Os móveis (sinuca, sofás, café) ficam no
+// fundo dela; as pessoas, em até três fileiras na frente, repartidas por igual e espalhadas pela largura toda, para
+// os nomes não encostarem. A ordem é pelo id, para ninguém trocar de lugar sem motivo entre uma leitura e outra.
+export const LAZER = { x0: 13.4, x1: 43, y0: 14.2, y1: 21.6 };
+const LAZER_FILEIRAS = [17.0, 18.8, 20.6];
+const LAZER_PASSO_MIN = 2.3, LAZER_PASSO_MAX = 5;
+export type Vaga = { id: string; x: number; y: number };
+export function vagasLazer(ids: string[]): { vagas: Vaga[]; semVaga: string[] } {
+  const larg = LAZER.x1 - LAZER.x0 - 1.2, cabe = Math.floor(larg / LAZER_PASSO_MIN);
+  const todos = [...new Set(ids)].sort(), dentro = todos.slice(0, cabe * LAZER_FILEIRAS.length);
+  const nf = Math.min(LAZER_FILEIRAS.length, Math.max(1, Math.ceil(dentro.length / 5))), k = Math.ceil(dentro.length / nf);
+  const vagas: Vaga[] = [];
+  for (let f = 0; f < nf; f++) {
+    const fila = dentro.slice(f * k, (f + 1) * k), passo = Math.min(LAZER_PASSO_MAX, larg / Math.max(1, fila.length));
+    const ini = LAZER.x0 + 0.6 + (larg - passo * fila.length) / 2;
+    fila.forEach((id, j) => vagas.push({ id, x: ini + passo * (j + 0.5) + (f % 2 ? passo / 4 : -passo / 4) * (fila.length > 1 ? 1 : 0), y: LAZER_FILEIRAS[f] }));
+  }
+  return { vagas, semVaga: todos.slice(dentro.length) };
 }
