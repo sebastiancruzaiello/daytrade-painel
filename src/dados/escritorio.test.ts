@@ -119,14 +119,22 @@ test("inventário: aprovado que não chegou continua na conta e aparece como fal
   assert.deepEqual(e.faltando.map(o => o.id), ["lote:b", "pc:orb-petr4"]);
 });
 
-test("atividade: sem prova não parece ocupado; prova velha vira 'parado desde'", () => {
+test("atividade: só fica no posto quem está trabalhando agora; sem tarefa vai para o lazer; sem dado fica com alerta", () => {
   const agora = t("2026-10-30T15:00:00Z");
-  assert.equal(atividade(undefined, agora).txt, "sem registro");
+  const sem = atividade(undefined, agora);
+  assert.equal(sem.txt, "sem registro");
+  assert.equal(sem.posto, "alerta");
   const m = { id: "sentinela-api", nome: "Sentinela", papel: "", quando: "07h", executando: false, ultima: null, texto: null, fonte: "", prova_na_vps: false, sem_prova: "a nuvem não deixa prova na VPS" };
-  assert.equal(atividade([m] as never, agora).txt, "aguardando agenda");
-  assert.match(atividade([{ ...m, ultima: "2026-10-30T10:00:00Z", texto: "relatório" }] as never, agora).txt, /^última atividade/);
-  assert.match(atividade([{ ...m, ultima: "2026-10-27T10:00:00Z", texto: "relatório" }] as never, agora).txt, /^parado desde/);
-  assert.equal(atividade([{ ...m, executando: true }] as never, agora).txt, "trabalhando agora");
+  assert.deepEqual([atividade([m] as never, agora).txt, atividade([m] as never, agora).posto], ["sem tarefa · aguardando agenda", "folga"]);
+  const recente = atividade([{ ...m, ultima: "2026-10-30T10:00:00Z", texto: "relatório" }] as never, agora);
+  assert.match(recente.txt, /^sem tarefa · última \d\d:\d\d$/);
+  assert.equal(recente.posto, "folga");
+  const velho = atividade([{ ...m, ultima: "2026-10-27T10:00:00Z", texto: "relatório" }] as never, agora);
+  assert.match(velho.txt, /^parado desde/);
+  assert.equal(velho.posto, "alerta");
+  const agoraMesmo = atividade([{ ...m, executando: true }] as never, agora);
+  assert.equal(agoraMesmo.txt, "trabalhando agora");
+  assert.equal(agoraMesmo.posto, "trabalhando");
 });
 
 test("linhas novas estragadas ou ausentes não quebram o painel", () => {

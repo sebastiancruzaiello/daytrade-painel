@@ -255,7 +255,7 @@ function Legenda() {
       <li><b>Sentado na mesa</b> robô comprado (tem moeda ou ação), mesmo parado esperando. Em cima: ganho ou perda do período escolhido (DIA ou ACUM), em verde, vermelho ou neutro, com moeda; embaixo, o que está comprado.</li>
       <li><b>Área de lazer</b> (sinuca e café, na frente) quem está sem posição, inclusive esperando sinal; a cadeira dele fica vazia na mesa. "Compra na próxima abertura" quando já decidiu comprar.</li>
       <li><b>Em pé no lugar, com ⚠</b> falha, pausa, parado ou sem dado: nunca vai para o lazer. Apagado: parado, sem conexão ou sem telemetria.</li>
-      <li><b>Agentes e apoio</b> mostram a última atividade comprovada; sem prova, "sem registro" ou "aguardando agenda".</li>
+      <li><b>Agentes e apoio</b> seguem a mesma regra: no posto só quem está com tarefa em execução agora; sem tarefa vai para a área de lazer ("sem tarefa · última 01:11" ou "aguardando agenda"); parado há mais de um dia ou sem registro fica no posto, em amarelo. O Guardião do motor de risco fica sempre na cabine: ele confere cada ordem na hora em que ela nasce.</li>
       <li><b>Nomes</b> ficam nos pés de cada um; a descrição aparece ao clicar.</li>
       <li><b>TVs</b> preço diário da moeda ou do fundo; nas mesas MM20, a linha clara é a média de 20 dias.</li>
       <li><b>Telão</b> 10.000 em cada conta: cripto em linha cheia; tracejado, só segurar BTC, SPY (EUA) e BOVA11 (B3).</li>

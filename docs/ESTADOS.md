@@ -127,6 +127,9 @@ O cripto diário (MM20 BTC, MM20 ETH e Momentum) continua no salão antigo, por 
 | Sentado na mesa | comprado: tem moeda ou ação na mão, mesmo parado esperando (desde a 0.1.15) |
 | Na área de lazer (sinuca, sofá, café) | sem posição: em caixa, esperando sinal ou com compra marcada para a próxima abertura; a cadeira fica vazia |
 | Em pé no lugar, com ⚠ | falha, pausa, parado, dado velho ou sem dado; nunca vai para o lazer |
+| Agente ou apoio no posto | tarefa em execução agora; ou, em amarelo, parado há mais de um dia ou sem registro (desde a 0.1.16) |
+| Agente ou apoio no lazer | sem tarefa agora: "sem tarefa · última HH:MM" ou "aguardando agenda" (desde a 0.1.16) |
+| Guardião na cabine do motor de risco | sempre de guarda: confere cada ordem na hora em que ela nasce, não tem tarefa própria |
 | Apagado | parado, falha de conexão ou sem telemetria; continua no lugar, não some |
 | Faixa no peito | régua ou carteira de referência (não opera) |
 | Número em verde ou vermelho sobre a cabeça | ganho ou perda do dia ou acumulado, com moeda (desde a 0.1.14, veja abaixo) |
