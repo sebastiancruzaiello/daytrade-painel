@@ -328,3 +328,7 @@ button.chip-estado:hover { background: var(--card-2); }
   .detalhe-fatos div { flex-wrap: wrap; }
   .detalhe-fatos dd { text-align: left; }
 }
+
+/* 0.1.13: conta do elenco (esperados, recebidos, no escritório) e versão no rodapé */
+.conta-elenco { margin: 0; font-size: 12.5px; line-height: 1.45; }
+.rodape-versao { display: block; margin-bottom: 4px; }

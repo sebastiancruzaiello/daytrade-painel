@@ -10,6 +10,7 @@ export type DetalheRobo = {
   moeda: string; caixa: number | null; caixa_local?: number | null; reservado: number; exposicao: number | null;
   a_preco_de: string | null; custos: number | null; imposto?: number | null; dividendos?: number | null;
   operacoes: number | null; pendente: string | null; conciliacao: ConciliacaoDetalhe; linha: EventoDetalhe[];
+  quantidades?: Record<string, number>;  // só day trade: o que a conta tem agora (exportador desde 28/10/2026)
 };
 export type Detalhes = { em: string | null; robos: Record<string, DetalheRobo>; erros: string[] };
 
@@ -39,6 +40,8 @@ export function detalheDeLinhas(rows: Linha[]): Detalhes | null {
       moeda: txt(d.moeda) || "", caixa: num(d.caixa), caixa_local: num(d.caixa_local), reservado: num(d.reservado) ?? 0,
       exposicao: num(d.exposicao), a_preco_de: txt(d.a_preco_de), custos: num(d.custos), imposto: num(d.imposto),
       dividendos: num(d.dividendos), operacoes: num(d.operacoes), pendente: txt(d.pendente),
+      ...(d.quantidades && typeof d.quantidades === "object"
+        ? { quantidades: Object.fromEntries(Object.entries<any>(d.quantidades).filter(([, q]) => num(q) && q > 0)) } : {}),
       conciliacao: { fecha: typeof c.fecha === "boolean" ? c.fecha : null, nota: txt(c.nota) || "sem conferência",
         caixa_refeito: num(c.caixa_refeito) ?? undefined, diferenca: num(c.diferenca) ?? undefined },
       linha: (Array.isArray(d.linha) ? d.linha : [])
