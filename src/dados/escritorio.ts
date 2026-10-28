@@ -137,22 +137,30 @@ export const PERSONAGEM_FICHA: Record<string, string[]> = {
   "robo:guardiao-dados": ["guardiao-dados"], "robo:coletor-clima": ["coletor-clima"],
   "robo:coletor-mercados": ["coletor-acoes"], "robo:organizador": ["organizador"],
 };
-export type Atividade = { txt: string; tom: "ok" | "espera" | "aviso" | "ruim"; detalhe: string };
+// posto: onde a pessoa fica no escritório (mesma lógica da mesa dos robôs, pedido de 28/10/2026). "trabalhando" =
+// tarefa em execução agora, fica no posto; "folga" = sem tarefa agora (já entregou ou espera a agenda), vai para a
+// área de lazer; "alerta" = parado há mais de um dia ou sem nenhum registro, fica no posto com o aviso (falta de dado
+// nunca parece lazer). O Guardião de risco não tem tarefa própria: ele faz parte do motor de risco e confere cada
+// ordem no momento em que ela nasce, então fica sempre de guarda na cabine.
+export type Posto = "trabalhando" | "folga" | "alerta";
+export type Atividade = { txt: string; tom: "ok" | "espera" | "aviso" | "ruim"; detalhe: string; posto: Posto };
+export const DE_GUARDA = new Set(["staff:guardiao"]);
 
 // Quem não tem prova legível diz isso, em vez de parecer ocupado. "extra" = prova lida pelo próprio painel (n8n).
 export function atividade(ms_: MembroVivo[] | undefined, agora: number, extra?: { em: string | null; texto: string } | null): Atividade {
   const m = ms_ && ms_[0];
-  if (!m && !extra) return { txt: "sem registro", tom: "espera", detalhe: "Ainda não há registro de atividade deste membro no escritório." };
-  if (m?.executando) return { txt: "trabalhando agora", tom: "ok", detalhe: m.texto || "tarefa em execução" };
+  if (!m && !extra) return { txt: "sem registro", tom: "aviso", posto: "alerta", detalhe: "Ainda não há registro de atividade deste membro no escritório." };
+  if (m?.executando) return { txt: "trabalhando agora", tom: "ok", posto: "trabalhando", detalhe: m.texto || "tarefa em execução" };
   const prova = [m?.ultima ? { em: m.ultima, texto: m.texto || "atividade registrada", fonte: m.fonte } : null,
     extra?.em ? { em: extra.em, texto: extra.texto, fonte: "tabela do n8n lida pelo painel" } : null]
     .filter(Boolean).sort((a, b) => ms(b!.em) - ms(a!.em))[0];
   if (prova) {
-    const h = (agora - ms(prova.em)) / 36e5;
-    return { txt: h < 24 ? "última atividade " + quando(prova.em).slice(-5) : "parado desde " + quando(prova.em).slice(0, 5),
-      tom: h < 24 ? "ok" : "aviso", detalhe: `${prova.texto} (${prova.fonte}, ${quando(prova.em)}).` };
+    const h = (agora - ms(prova.em)) / 36e5, det = `${prova.texto} (${prova.fonte}, ${quando(prova.em)}).`;
+    return h < 24
+      ? { txt: "sem tarefa · última " + quando(prova.em).slice(-5), tom: "espera", posto: "folga", detalhe: det }
+      : { txt: "parado desde " + quando(prova.em).slice(0, 5), tom: "aviso", posto: "alerta", detalhe: det };
   }
-  return { txt: "aguardando agenda", tom: "espera", detalhe: `${m!.sem_prova || "sem prova legível"}. Agenda: ${m!.quando}.` };
+  return { txt: "sem tarefa · aguardando agenda", tom: "espera", posto: "folga", detalhe: `${m!.sem_prova || "sem prova legível"}. Agenda: ${m!.quando}.` };
 }
 
 // ---------- reconciliação: aprovado → instalado → em dia → no cron → enviado → desenhado ----------

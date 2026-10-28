@@ -6,7 +6,7 @@ import { segurar, pregao, idxAte } from "../dados/mercados";
 import { criarCamera } from "./camera";
 import { planta, ALA, ondeFica, vagasLazer, LAZER } from "../dados/elenco";
 import { ESTADOS } from "../dados/estados";
-import { rotuloFinanceiro, rotuloSituacao } from "../dados/escritorio";
+import { rotuloFinanceiro, rotuloSituacao, DE_GUARDA } from "../dados/escritorio";
 
 const FONT = '"Chakra Petch", "Segoe UI", sans-serif';
 // O salão de cripto vai de x 0 a 12; a ala de ações (EUA e B3) de x 12 a 22; a ala dos robôs, gerada da lista de
@@ -29,7 +29,7 @@ const GUARD = { x: 10.3, y: 2.4 };
 export type Area = "tudo" | "cripto" | "acoes" | "robos" | "lazer" | "apoio";
 export type Cena = { mostrar: (s: EstadoCena) => void; destruir: () => void; mais: () => void; menos: () => void; inicio: () => void; selecionar: (id: string | null) => void; focar: (a: Area) => void };
 // periodo: "dia" ou "acumulado" (rótulo de ganho/perda); atividades: o que cada agente ou apoio comprovadamente fez.
-export type EstadoCena = { D: any; dias: any[]; di: number; pararTeste: boolean; vivo: any | null; aoVivo: boolean; ex: any; entidades: any[]; periodo?: string; atividades?: Record<string, { txt: string; tom: string }> };
+export type EstadoCena = { D: any; dias: any[]; di: number; pararTeste: boolean; vivo: any | null; aoVivo: boolean; ex: any; entidades: any[]; periodo?: string; atividades?: Record<string, { txt: string; tom: string; posto?: string }> };
 
 // Ids das pessoas: "robo:<conta>:<cadeira>", "staff:escrivao", "staff:guardiao", "agente:<nome>", "ref:SPY", "ref:BOVA11",
 // "robo:guardiao-dados", "robo:coletor-clima", "robo:coletor-mercados", "robo:organizador",
@@ -314,6 +314,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.fillStyle = "#e9c9a8"; g.beginPath(); g.arc(sx, sy - 43, 8, 0, 7); g.fill();
     g.fillStyle = "#1d2a30"; g.fillRect(sx - 9, sy - 52, 18, 6);
     if (fl) tag(sx, sy - 60, "FREIO!", C.bad);
+    else if (S.aoVivo) rotulo(sx, sy - 58, [{ txt: "de guarda · confere cada ordem", col: C.good }]);
     nome("staff:guardiao", sx, sy, "Guardião", "#9fc3cf");
     const [lx, ly] = P(9.25, 3.6, 78); g.font = `700 9px ${FONT}`; g.fillStyle = "#9fc3cf"; g.fillText("MOTOR DE RISCO", lx - 4, ly);
   }
@@ -330,6 +331,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   }
   function drawStaff(t) {
     staff.forEach((s, i) => {
+      if (postoDe(s.id) === "folga") { folgados.push(s); return; }
       const [sx, sy] = P(s.x + (s.anda ? Math.sin(t / 2400) * 0.6 : 0), s.y); anel(s.id, sx, sy); g.fillStyle = "rgba(0,0,0,.35)"; g.beginPath(); g.ellipse(sx, sy, 11, 5, 0, 0, 7); g.fill();
       g.fillStyle = "#2c3439"; g.fillRect(sx - 6, sy - 14, 5, 14); g.fillRect(sx + 1, sy - 14, 5, 14);
       g.fillStyle = s.cor; roundRect(sx - 9, sy - 36, 18, 22, 6); g.fill();
@@ -341,6 +343,14 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
   }
 
   // Agentes e apoio: o que comprovadamente fizeram (sem lucro: eles não têm conta). Sem prova, diz "sem registro".
+  // Agente ou apoio sem tarefa agora vai para a área de lazer, como o robô sem posição (só com o ao vivo, que tem a
+  // prova). Trabalhando, parado há mais de um dia, sem registro ou com alerta: fica no posto.
+  let folgados = [];
+  function postoDe(id) {
+    if (!S.aoVivo || DE_GUARDA.has(id)) return "trabalhando";
+    const a = S.atividades && S.atividades[id];
+    return (a && a.posto) || "trabalhando";
+  }
   function atividadeDe(id, sx, y) {
     const a = S.atividades && S.atividades[id];
     if (a && S.aoVivo) rotulo(sx, y, [{ txt: a.txt, col: TOM_COR[a.tom] || C.muted }]);
@@ -455,7 +465,9 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
         nome(a.id, sx, sy, "Segurar " + a.nome, a.cor);
       } });
       objs.push({ k: 18.6 + a.y + 1.5 + 0.3, f: () => {
-        const ag = a.agente, [sx, sy] = P(18.6, a.y + 1.5); anel(ag.id, sx, sy);
+        const ag = a.agente, [sx, sy] = P(18.6, a.y + 1.5);
+        if (postoDe(ag.id) === "folga") { cadeiraVazia(sx, sy); folgados.push(ag); return; }
+        anel(ag.id, sx, sy);
         const by = figura(sx, sy, ag.cor, { sentado: true, t, fase: n + 2 });
         atividadeDe(ag.id, sx, by - 36);
         nome(ag.id, sx, sy, ag.nome, ag.cor);
@@ -463,9 +475,10 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     });
     objs.push({ k: 20.3 + 1, f: () => box(20.05, 0.9, 0.4, 10.4, 24, "#33404a", "#252f36", "#2c373f") });
     APOIO.forEach((p, n) => objs.push({ k: p.x + p.y + 0.3, f: () => {
+      const gd = ex.guardiao, alerta = p.id === "robo:guardiao-dados" && gd && gd.nivel !== "ok";
+      if (!alerta && postoDe(p.id) === "folga") { folgados.push(p); return; }
       const [sx, sy] = P(p.x, p.y); anel(p.id, sx, sy);
       const by = figura(sx, sy, p.cor, { t, fase: n });
-      const gd = ex.guardiao, alerta = p.id === "robo:guardiao-dados" && gd && gd.nivel !== "ok";
       if (alerta) tag(sx, sy - 58, "!", gd.nivel === "falha" ? C.bad : C.warn);
       else atividadeDe(p.id, sx, by - 36);
       nome(p.id, sx, sy, p.nome, p.cor);
@@ -538,12 +551,13 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     const lista = S.entidades || [], pl = plantaDe(lista), porId = new Map(lista.map(x => [x.id, x]));
     const onde = new Map(pl.lugares.map(l => [l.id, porId.get(l.id) ? ondeFica(porId.get(l.id)) : "alerta"]));
     const noLazer = pl.lugares.filter(l => onde.get(l.id) === "lazer").map(l => l.id);
-    const chave = noLazer.join("|");
-    if (chave !== lazerChave) { lazerChave = chave; lazerAtual = vagasLazer(noLazer); }
+    const daEquipe = new Map(folgados.map(f => [f.id, f]));
+    const chave = [...noLazer, ...daEquipe.keys()].join("|");
+    if (chave !== lazerChave) { lazerChave = chave; lazerAtual = vagasLazer([...noLazer, ...daEquipe.keys()]); }
     const naMesa = pl.lugares.filter(l => onde.get(l.id) === "mesa").length;
     // Nome da faixa na ponta direita da primeira mesa, onde não há ninguém sentado.
     placasAla = pl.faixas.map(fx => [ALA.x1 + 0.2, fx.fileiras[0].y - 0.7, `${fx.nome.toUpperCase()} · ${fx.fileiras.reduce((a, f) => a + f.n, 0)}`, COR_MERCADO[fx.nome] || AZUL]);
-    placasAla.push([LAZER.x0 + 2.1, 12.8, `ÁREA DE LAZER (na frente) · ${noLazer.length} sem posição · ${naMesa} ${naMesa === 1 ? "comprado" : "comprados"} na mesa da ala`, C.staff]);
+    placasAla.push([LAZER.x0 + 2.1, 12.8, `ÁREA DE LAZER (na frente) · ${noLazer.length} robôs sem posição · ${daEquipe.size} da equipe sem tarefa · ${naMesa} ${naMesa === 1 ? "comprado" : "comprados"} na mesa da ala`, C.staff]);
     if (pl.foraDaAla.length) placasAla.push([ALA.x0 + 5.3, ALA.y1 - 0.1, `+${pl.foraDaAla.length} sem lugar: veja a aba Robôs`, C.warn]);
     if (lazerAtual.semVaga.length) placasAla.push([LAZER.x0 + 1.4, N + 1.3, `+${lazerAtual.semVaga.length} sem vaga no lazer: veja a aba Robôs`, C.warn]);
     if (!pl.lugares.length) placasAla.push([ALA.x0 + 5.3, 5.5, S.aoVivo ? "nenhum robô chegou na leitura" : "liga o ao vivo para ver os robôs", C.muted]);
@@ -561,7 +575,16 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     });
     moveisLazer();
     const itens = [];
-    lazerAtual.vagas.forEach((v, n) => { const x = porId.get(v.id); if (x) itens.push({ k: v.y + v.x * 1e-3, f: () => { const [sx, sy] = P(v.x, v.y); drawEntidade(x, sx, sy, t, n, "lazer"); } }); });
+    lazerAtual.vagas.forEach((v, n) => {
+      const x = porId.get(v.id), eq = daEquipe.get(v.id);
+      if (x) itens.push({ k: v.y + v.x * 1e-3, f: () => { const [sx, sy] = P(v.x, v.y); drawEntidade(x, sx, sy, t, n, "lazer"); } });
+      else if (eq) itens.push({ k: v.y + v.x * 1e-3, f: () => {
+        const [sx, sy] = P(v.x, v.y); anel(eq.id, sx, sy);
+        const by = figura(sx, sy, eq.cor, { t, fase: n });
+        atividadeDe(eq.id, sx, by - 36);
+        nome(eq.id, sx, sy, eq.nome, eq.cor);
+      } });
+    });
     itens.sort((a, b) => a.k - b.k).forEach(i => i.f());
   }
 
@@ -579,7 +602,7 @@ export function criarCena(cv: HTMLCanvasElement, aoZoom?: (z: number) => void, a
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#0b0f12"; g.fillRect(0, 0, cv.width, cv.height);
     camera.aplicar(g, DPR(), dt);
     floor(); walls(); drawTelao(); drawShelf(); drawQuadroLab();
-    nomes = []; rotulos = [];
+    nomes = []; rotulos = []; folgados = [];
     const d = S.dias[S.di];
     const objs = [];
     objs.push({ k: 6.9, f: () => drawDesk(2.2, 4.2, 3.2, "MESA MM20", C.accent) });

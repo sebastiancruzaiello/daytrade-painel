@@ -70,6 +70,13 @@ para o lazer: ficam em pé no próprio lugar com ⚠ e o motivo. O escritório f
 frente) e os lugares mais espaçados, para os nomes não se sobreporem. Regra em `src/dados/elenco.ts` (`ondeFica`,
 `vagasLazer`), com testes.
 
+Desde a 0.1.16 os **agentes de IA e o apoio** seguem a mesma regra: no posto só quem está com uma tarefa em execução
+agora. Quem está sem tarefa (já entregou, ou espera a próxima hora da agenda) vai para a área de lazer com
+"sem tarefa · última 01:11" ou "sem tarefa · aguardando agenda". Parado há mais de um dia ou sem nenhum registro fica
+no posto, em amarelo, porque falta de dado não pode parecer folga; o Guardião de dados com alerta também fica. A única
+exceção é o **Guardião do motor de risco**: ele não tem tarefa própria, faz parte do motor e confere cada ordem na hora
+em que ela nasce, então fica sempre de guarda na cabine. Regra em `src/dados/escritorio.ts` (`atividade`, campo `posto`).
+
 ## Desenvolver
 
     npm ci
