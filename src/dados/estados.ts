@@ -260,20 +260,28 @@ function intradia(e: Entrada): Entidade[] {
   });
 }
 
-// ---------- carteiras de referência (R$ 100) ----------
+// ---------- carteiras de referência (só segurar; cada uma com o seu capital) ----------
 const MERCADO_CARTEIRA: Record<string, Mercado> = { brasil: "B3", eua: "EUA", cripto: "Cripto" };
+
+// Desde a carteiras-r100-v2 cada carteira traz o próprio capital (a Brasil passou a R$ 400 em 28/10/2026).
+// Relatório antigo, sem ele, usa o capital geral; sem nenhum dos dois, os R$ 100 do começo.
+export function capitalCarteira(r: { capital_brl?: number }, w: { capital_brl?: number }): number {
+  const ok = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x) && x > 0;
+  return ok(w.capital_brl) ? w.capital_brl : ok(r.capital_brl) ? r.capital_brl : 100;
+}
 
 function carteiras(e: Entrada): Entidade[] {
   const s = e.viz.carteiras;
   if (!s) return [];
-  const r = s.relatorio, cap = r.capital_brl || 100;
+  const r = s.relatorio;
   return Object.entries(r.carteiras || {}).map(([k, w]) => {
+    const cap = capitalCarteira(r, w);
     const insuf = w.situacao === "capital insuficiente";
     const b = baseConexao(e.conexao, true)
       || (s.botao_parar ? { estado: "parado" as Estado, motivo: "Botão de parar ligado" + (s.motivo_parar ? `: ${s.motivo_parar}` : ".") } : null)
       || velho(e.agora, s.gerado_em, s.relatorio_em, PRAZO.carteiras, "A rodada das carteiras")
       || (w.situacao === "sem dados" ? { estado: "aguardando-dado" as Estado, motivo: "Sem preço recente do ativo" + (w.motivo ? `: ${w.motivo}` : ".") } : null)
-      || (insuf ? { estado: "sem-capital" as Estado, motivo: `R$ ${cap} não compram uma unidade de ${w.ativo}` + (w.minimo_brl ? `; o mínimo seria R$ ${w.minimo_brl.toFixed(2).replace(".", ",")}.` : ".") } : null)
+      || (insuf ? { estado: "sem-capital" as Estado, motivo: `R$ ${cap.toLocaleString("pt-BR")} não compram uma unidade de ${w.ativo}` + (w.minimo_brl ? `; o mínimo seria R$ ${w.minimo_brl.toFixed(2).replace(".", ",")}.` : ".") } : null)
       || { estado: "ativo" as Estado, motivo: `Investida em ${w.ativo} desde ${w.comprou_em ? dBR(w.comprou_em) : "—"}.` };
     const hist = ((w as { historico?: [string, number][] }).historico || []);
     return {

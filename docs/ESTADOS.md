@@ -13,7 +13,7 @@ nunca se confundem (Plano Geral 2.0, §17).
 | Dado velho | amarelo | A ligação funciona, mas a informação não se renova no prazo. | VPS sem mandar resumo há 2h |
 | Pausado | amarelo | O motor de risco pausou a conta por um dia depois de perda grande. Volta sozinha. | perda de 15% no dia |
 | Parado | vermelho, com borda | Motor de risco (queda de 35%) ou botão de parar. Só volta com ordem do Sebastian. | botão de parar ligado |
-| Capital insuficiente | azul | A carteira de R$ 100 não compra uma unidade do ativo com as regras reais. Mostra o mínimo. | Carteira EUA (1 cota de SPY) |
+| Capital insuficiente | azul | O capital da carteira não compra uma unidade do ativo com as regras reais. Mostra o mínimo. | Carteira EUA (1 cota de SPY) |
 
 ## Ordem de prioridade
 
@@ -35,7 +35,7 @@ nunca se confundem (Plano Geral 2.0, §17).
 | Rodada do cripto diário | depois da meia-noite UTC | 25 h |
 | Bolsa (EUA e B3) | de hora em hora, minuto 40 | 2h30 |
 | Day trade em cripto | de minuto em minuto | 20 min |
-| Carteiras R$ 100 | uma vez por dia, 19h50 de Brasília | 26 h |
+| Carteiras de referência | uma vez por dia, 19h50 de Brasília | 26 h |
 
 ## Detalhe de cada robô (0.1.10, linha `robos:detalhe`)
 
@@ -57,7 +57,7 @@ Cada entrada da linha do tempo tem um selo:
 
 Na ficha aparecem a **última decisão** (logo abaixo da situação) e o quadro **Dinheiro**:
 
-- **Caixa disponível.** É o caixa do `estado.json` da simulação. Na carteira de R$ 100 em dólar ou cripto, inclui a sobra na moeda do ativo, convertida.
+- **Caixa disponível.** É o caixa do `estado.json` da simulação. Na carteira de referência em dólar ou cripto, inclui a sobra na moeda do ativo, convertida.
 - **Reservado.** É dinheiro separado para a ordem de outro robô na mesma carteira. Hoje cada robô tem a sua carteira, então fica **zero**. A carteira compartilhada com reserva (`lab/contas`) existe, mas ainda não está ligada a nenhuma simulação.
 - **Exposição.** É o que está aplicado no ativo, ao último preço que a simulação usou. A data aparece embaixo.
 - **Decisão pendente.** Só existe na bolsa: o que a regra decidiu no fechamento e vai executar na próxima abertura.
@@ -100,3 +100,9 @@ com o diário. A conciliação é a do próprio lote.
 
 - Até o exportador novo ser publicado na VPS (PR daytrade-lab#32), custos do cripto diário e do day trade não aparecem, e o caixa das carteiras é calculado.
 - A reserva de caixa só passa a ter número quando algum robô usar a carteira compartilhada.
+
+## Capital das carteiras de referência
+
+Cada carteira mostra o capital que vem no dado (`capital_brl` dentro dela, desde a `carteiras-r100-v2`). Se o relatório
+for antigo e não trouxer, vale o capital geral do relatório e, sem ele, R$ 100. Desde 28/10/2026 a Brasil tem R$ 400 e EUA
+e Cripto R$ 100. O título da tela Contas diz "R$ X cada" só quando todas têm o mesmo capital.
