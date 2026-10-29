@@ -8,6 +8,8 @@ export type Etapa = { id: string; rotulo: string; explica: string };
 export type Candidato = {
   id: string; titulo: string; mercado: string; etapa: string; situacao: string; desde: string | null;
   responsavel: string | null; evidencia: string | null; veredito: string | null; parado: boolean;
+  // Trilha 2 (lab/TRILHA-2-v1.md): ideia nossa ou adaptação de uma regra publicada (mae). Trilha 1 = replicação fiel.
+  trilha: 1 | 2; mae: string | null;
 };
 export type Fabrica = { em: string | null; origem: "fabrica" | "lab" ; etapas: Etapa[]; candidatos: Candidato[] };
 
@@ -59,6 +61,7 @@ export function fabricaDeLinhas(rows: Linha[]): Fabrica | null {
       id: txt(c.id) || `c${i}`, titulo: txt(c.titulo)!, mercado: txt(c.mercado) || "—", etapa, situacao,
       desde: txt(c.desde), responsavel: txt(c.responsavel) || DONO[etapa] || null, evidencia: txt(c.evidencia),
       veredito: txt(c.veredito), parado: PARADO.test(situacao) || PARADO.test(c.veredito || ""),
+      trilha: c.trilha === 2 ? 2 : 1, mae: c.trilha === 2 ? txt(c.mae) : null,
     };
   });
   return { em: txt(m.em) || r.atualizado || null, origem: "fabrica", etapas, candidatos };
@@ -77,7 +80,7 @@ export function fabricaDoLab(lab: Lab): Fabrica {
       candidatos.push({
         id: `${mk}-${i}`, titulo: l.t, mercado: mk === "cripto" ? "Cripto" : mk.toUpperCase(), etapa, situacao: v || "sem veredito",
         desde: l.d || null, responsavel: DONO[etapa], evidencia: null, veredito: /reprov|aprov|descart|devolv/i.test(v) ? v : null,
-        parado: PARADO.test(v),
+        parado: PARADO.test(v), trilha: 1, mae: null,
       });
     });
   });
@@ -85,6 +88,13 @@ export function fabricaDoLab(lab: Lab): Fabrica {
 }
 
 // Quantos candidatos esperam cada pessoa da fábrica (só os que não estão parados).
+// Rótulo de um candidato da trilha 2: de onde vem a ideia e, até o veredito, que ele não está aprovado.
+export function rotuloTrilha(c: Candidato): string | null {
+  if (c.trilha !== 2) return null;
+  const origem = c.mae ? `adaptação nossa de ${c.mae}` : "ideia nossa";
+  return /aprovad/i.test(c.veredito || "") && !/reprov/i.test(c.veredito || "") ? origem : `${origem} · não aprovado`;
+}
+
 export function filaPorPessoa(f: Fabrica) {
   const c: Record<string, number> = {};
   f.candidatos.filter(x => !x.parado).forEach(x => { const p = x.responsavel || "—"; c[p] = (c[p] || 0) + 1; });
