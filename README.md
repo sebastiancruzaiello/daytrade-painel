@@ -99,3 +99,27 @@ sim do Sebastian) vai para o lazer dizendo o quê.
     npm test
     npm run dev          # tela no navegador
     npm run dist:win     # instalador local, sem publicar
+
+## Visão geral para quem não é técnico (0.1.20)
+
+Pedido do Sebastian no encaminhamento de 29/10/2026 (§8): entender o laboratório em uns 30 segundos. O programa agora
+abre na **Visão geral**, e as abas ficaram: Visão geral · Escritório · Robôs · Testes no passado · Equipe e tarefas ·
+Gastos de IA · Contas · Diário · Ajustes.
+
+- **Visão geral** (`src/telas/VisaoGeral.tsx`, regras em `src/dados/visao.ts`): "Precisa de você?" (só o que o
+  registro de tarefas diz que o Sebastian resolve; sem o registro, diz que não sabe em vez de "nada precisa de você"),
+  um resumo em frases montadas por regra (sem IA), o que mudou desde a última visita (retrato guardado só no PC), os
+  quatro blocos (robôs, equipe, testes no passado, despesa real de IA), o que foi decidido para a próxima abertura
+  (intenção, não execução) e um cartão simples por robô: o que é, o que faz agora, por quê, próxima avaliação,
+  resultado com moeda e período e os horários do preço e da avaliação. Os robôs ficam em quatro grupos: com posição,
+  sem posição esperando, com problema e sem informação. O robô da PETR4, que roda no PC e não manda nada, aparece sempre
+  como "sem informação". Réguas e carteiras ficam à parte e nunca se somam aos robôs. Glossário no fim da tela.
+- **Testes no passado** (`src/telas/Passado.tsx`, `src/dados/replay.ts`): o replay lacrado do laboratório
+  (REPLAY-v1, PR lab#102) com escolha de regra, capital e custo. `src/dados/replay.json` é cópia dos arquivos de
+  `lab/reports/replay`, feita por `node scripts/replay-do-lab.mjs <pasta> <commit do lab>`, com o SHA-256 de cada
+  arquivo lido; o painel não refaz conta.
+- **Gastos de IA** (`src/telas/Gastos.tsx`): linha `custos:resumo` — teto do mês, gasto confirmado, reservado, margem
+  e disponível, gasto por candidata ou tarefa e o que não entra na conta. Dinheiro de verdade, em cor própria.
+- **Equipe e tarefas** (antiga Fábrica): as tarefas do registro em cinco colunas (em execução, próximas, aguardando
+  condição, incidentes, concluídas), com quem precisa agir, e a esteira da fábrica embaixo.
+- Faixa permanente "100% simulação — nenhum investimento real" nas telas com resultado dos robôs.

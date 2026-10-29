@@ -18,9 +18,11 @@ function lerFiltro(): Filtro {
   try { return { ...filtroVazio(), ...JSON.parse(localStorage.getItem(CHAVE) || "{}") }; } catch { return filtroVazio(); }
 }
 
-export function Robos({ lista, aoVivo, avisoLote, pront, periodo = "dia" }: { lista: Entidade[]; aoVivo: boolean; avisoLote?: string | null; pront?: Prontidao | null; periodo?: Periodo }) {
+export function Robos({ lista, aoVivo, avisoLote, pront, periodo = "dia", abrirId = null }: { lista: Entidade[]; aoVivo: boolean; avisoLote?: string | null; pront?: Prontidao | null; periodo?: Periodo; abrirId?: string | null }) {
   const [f, setF] = useState<Filtro>(lerFiltro);
-  const [aberto, setAberto] = useState<string | null>(null);
+  // Vindo da Visão geral, abre direto o detalhe pedido; os filtros guardados continuam como estavam.
+  const [aberto, setAberto] = useState<string | null>(abrirId);
+  useEffect(() => { if (abrirId) setAberto(abrirId); }, [abrirId]);
   useEffect(() => { try { localStorage.setItem(CHAVE, JSON.stringify(f)); } catch { /* sem memória do navegador, tudo bem */ } }, [f]);
   const vistos = useMemo(() => filtrar(lista, f), [lista, f]);
   const contagem = useMemo(() => contarEstados(lista), [lista]);
