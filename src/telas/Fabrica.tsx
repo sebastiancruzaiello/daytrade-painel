@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { hora, dBR } from "../dados/formato";
-import { filaPorPessoa, porEtapa, type Candidato, type Fabrica as F } from "../dados/fabrica";
+import { filaPorPessoa, porEtapa, rotuloTrilha, type Candidato, type Fabrica as F } from "../dados/fabrica";
 
 // Área da fábrica: quem pesquisa, revisa, congela e testa estratégias, e onde cada candidato está. Só olha.
 // Os papéis vêm do catálogo da equipe (daytrade-lab, equipe/catalogo); o andamento de verdade é a esteira abaixo.
@@ -60,7 +60,7 @@ export function Fabrica({ f }: { f: F }) {
           </div>
         )}
       </section>
-      <p className="nota">A fábrica só propõe e testa, sem pedir "sim" a cada etapa (delegação de 27/10/2026), com teto de US$ 15 por candidato e US$ 150 por mês. Continua precisando do "sim" do Sebastian, com data e registro: um robô novo e permanente na simulação (nível 3 do catálogo), qualquer gasto novo e qualquer mudança de risco, lacre ou limite. Nenhuma IA decide ordens.</p>
+      <p className="nota">A fábrica só propõe e testa, sem pedir "sim" a cada etapa (delegação de 27/10/2026), dentro dos US$ 200 do mês para IA/API (referência de US$ 15 por candidato). Desde 29/10 também testa ideias nossas e adaptações (trilha 2): a regra é lacrada antes de qualquer número e julgada só com dias depois do lacre. Continua precisando do "sim" do Sebastian, com data e registro: um robô novo e permanente na simulação (nível 3 do catálogo), qualquer gasto novo e qualquer mudança de risco, lacre ou limite. Nenhuma IA decide ordens.</p>
     </div>
   );
 }
@@ -69,6 +69,7 @@ function CartaoCandidato({ c }: { c: Candidato }) {
   return (
     <article className={"candidato" + (c.parado ? " parado" : "")}>
       <b>{c.titulo}</b>
+      {rotuloTrilha(c) && <span className="candidato-trilha" title="Trilha 2: regra nossa, lacrada antes de qualquer número e julgada só com dias depois do lacre (TRILHA-2-v1.md)">{rotuloTrilha(c)}</span>}
       <span className="candidato-meta">{c.mercado}{c.desde ? ` · desde ${dBR(c.desde).slice(0, 5)}` : ""}</span>
       <span className={"candidato-sit" + (c.parado ? " dn" : "")}>{c.situacao}</span>
       {c.responsavel && !c.parado && <span className="muted pequeno">com {c.responsavel}</span>}

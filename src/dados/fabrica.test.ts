@@ -1,7 +1,7 @@
 // Testes da leitura da fábrica de estratégias (npm test).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fabricaDeLinhas, fabricaDoLab, filaPorPessoa, porEtapa, ETAPAS } from "./fabrica.ts";
+import { fabricaDeLinhas, fabricaDoLab, filaPorPessoa, porEtapa, rotuloTrilha, ETAPAS } from "./fabrica.ts";
 
 const linha = (c: unknown) => [{ chave: "fabrica:resumo", conteudo: typeof c === "string" ? c : JSON.stringify(c), atualizado: "2026-10-28T10:00:00Z" }];
 
@@ -49,4 +49,16 @@ test("sem fábrica, o resumo do laboratório vira candidatos na etapa certa", ()
   assert.equal(f.candidatos[0].etapa, "triagem");
   assert.equal(f.candidatos[0].parado, true);
   assert.equal(f.candidatos[1].etapa, "parecer");
+});
+
+test("trilha 2: rótulo de ideia nossa ou adaptação, 'não aprovado' até o veredito; trilha 1 sem rótulo", () => {
+  const f = fabricaDeLinhas(linha({ candidatos: [
+    { id: "a", titulo: "Canal", mercado: "EUA", etapa: "triagem", trilha: 2, mae: "donchian, faith 2003" },
+    { id: "b", titulo: "Nossa", mercado: "Cripto", etapa: "parecer", trilha: 2, veredito: "aprovada" },
+    { id: "c", titulo: "Velha", mercado: "EUA", etapa: "parecer", trilha: 2, veredito: "reprovada" },
+    { id: "d", titulo: "Replicação", mercado: "EUA", etapa: "triagem" },
+  ] }))!;
+  assert.deepEqual(f.candidatos.map(rotuloTrilha), [
+    "adaptação nossa de donchian, faith 2003 · não aprovado", "ideia nossa", "ideia nossa · não aprovado", null]);
+  assert.equal(f.candidatos[3].trilha, 1);
 });
