@@ -1,7 +1,7 @@
 {
   "name": "daytrade-painel",
   "productName": "DAYTRADE Painel",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "Painel só de leitura da equipe de robôs DAYTRADE (simulação, dinheiro de mentira)",
   "author": "Sebastian",
   "license": "UNLICENSED",
@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "node --test electron/tests/fonte.test.cjs src/dados/estados.test.ts src/dados/fabrica.test.ts src/dados/detalhe.test.ts src/dados/lote.test.ts src/dados/elenco.test.ts src/dados/escritorio.test.ts",
+    "test": "node --test electron/tests/fonte.test.cjs src/dados/estados.test.ts src/dados/fabrica.test.ts src/dados/detalhe.test.ts src/dados/lote.test.ts src/dados/elenco.test.ts src/dados/escritorio.test.ts src/dados/visao.test.ts src/dados/replay.test.ts",
     "dist:win": "npm run build && electron-builder --win --x64 --publish never"
   },
   "dependencies": {

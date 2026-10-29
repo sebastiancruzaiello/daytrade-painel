@@ -28,7 +28,7 @@ const AGENTES: Record<string, { nome: string; cor: string; funcao: string; nao: 
     nome: "Pesquisador", cor: "#8fa9b3",
     funcao: "Procura estratégias publicadas em estudos e escreve fichas para o laboratório testar. Sem teto por mês: valem os freios por mercado (3 em triagem, 2 em código, 2 em teste).",
     nao: "Não roda código de outras pessoas e não vê os nossos resultados, para não escolher pelo que já sabe.",
-    agenda: "Quando a fila tem vaga: roda pela API na VPS, um candidato por vez, quando o Maestro aciona o executor da fábrica (teto de US$ 15 por candidato, dentro dos US$ 150 por mês da fábrica).",
+    agenda: "Quando a fila tem vaga: roda pela API na VPS, um candidato por vez, quando o Maestro aciona o executor da fábrica (dentro dos US$ 200 do mês para IA/API, sem teto fixo por candidato).",
     ultimo: "Veja a aba Fábrica: lá aparece cada candidato, a etapa e o arquivo que comprova.",
   },
   "agente:revisor": {

@@ -21,13 +21,16 @@ import { Ajustes } from "./telas/Ajustes";
 import { PararDialog } from "./telas/PararDialog";
 import { IconeParar } from "./telas/icones";
 import { useAtualizacao, FaixaAtualizacao } from "./atualizacao";
+import { VisaoGeral, type Aba } from "./telas/VisaoGeral";
+import { Passado } from "./telas/Passado";
+import { Gastos } from "./telas/Gastos";
+import { tarefasDeLinhas as listaTarefas, custosDeLinhas, contarEquipe, retrato, mudancas, type Custos, type Tarefa, type Retrato } from "./dados/visao";
 
 export type Base = "aovivo" | "recente" | "longo";
 export type InfoVivo =
   | { estado: "sem-programa" | "sem-endereco" | "lendo" }
   | { estado: "ok"; lidoEm: string; geradoEm: string; diasVivo: number }
   | { estado: "erro"; msg: string };
-type Aba = "pregao" | "robos" | "fabrica" | "contas" | "diario" | "ajustes";
 
 const DEZ_MIN = 10 * 60 * 1000;
 // Com a janela à vista, lê o n8n de minuto em minuto (só leitura, sem IA, sem custo novo); escondida, de 10 em 10.
@@ -35,7 +38,7 @@ const DEZ_MIN = 10 * 60 * 1000;
 const UM_MIN = 60 * 1000;
 
 export function App() {
-  const [aba, setAba] = useState<Aba>("pregao");
+  const [aba, setAba] = useState<Aba>("visao");
   const [base, setBase] = useState<Base>("recente");
   const [vivo, setVivo] = useState<Fonte | null>(null);
   const [info, setInfo] = useState<InfoVivo>({ estado: window.daytrade ? "lendo" : "sem-programa" });
@@ -57,6 +60,9 @@ export function App() {
   const [pront, setPront] = useState<Prontidao | null>(null);
   const [agentes, setAgentes] = useState<Agentes | null>(null);
   const [res, setRes] = useState<Resultados | null>(null);
+  const [custos, setCustos] = useState<Custos | null>(null);
+  const [tarefas, setTarefas] = useState<{ em: string | null; lista: Tarefa[] } | null>(null);
+  const [foco, setFoco] = useState<string | null>(null);
   const [periodo, setPeriodo] = useState<Periodo>(() => { try { return localStorage.getItem("periodo") === "acumulado" ? "acumulado" : "dia"; } catch { return "dia"; } });
   const mudaPeriodo = (p: Periodo) => { setPeriodo(p); try { localStorage.setItem("periodo", p); } catch { /* sem memória do navegador, tudo bem */ } };
   const ultimaLeitura = useRef(0);
@@ -88,6 +94,8 @@ export function App() {
     setPront(prontidaoDeLinhas(r.linhas));
     setAgentes(agentesDeLinhas(r.linhas));
     setRes(resultadoDeLinhas(r.linhas));
+    setCustos(custosDeLinhas(r.linhas));
+    setTarefas(listaTarefas(r.linhas));
     ultimaLeitura.current = Date.now();
     setAgora(Date.now());
     const v = deLinhas(r.linhas);
@@ -143,6 +151,16 @@ export function App() {
     return { ...y, dim: dimensoes(y, pront, agora) };
   }), [entidades0, res, pront, agora]);
   const quadro = useMemo(() => fab || fabricaDoLab(ex.lab), [fab, ex]);
+  // O que mudou desde a última visita: ao abrir, o retrato da sessão anterior vira a base; a cada leitura boa, o
+  // retrato desta sessão é guardado no PC (só neste computador, sem ir para lugar nenhum).
+  const anterior = useRef<Retrato | null | undefined>(undefined);
+  if (anterior.current === undefined) {
+    try { const v = localStorage.getItem("visita:atual"); anterior.current = v ? JSON.parse(v) : null; if (v) localStorage.setItem("visita:anterior", v); } catch { anterior.current = null; }
+  }
+  const agoraRetrato = useMemo(() => info.estado === "ok" ? retrato(entidades, tarefas, fab, custos, info.lidoEm) : null, [entidades, tarefas, fab, custos, info]);
+  useEffect(() => { if (agoraRetrato) try { localStorage.setItem("visita:atual", JSON.stringify(agoraRetrato)); } catch { /* sem memória, tudo bem */ } }, [agoraRetrato]);
+  const mudou = useMemo(() => agoraRetrato ? mudancas(anterior.current || null, agoraRetrato, tarefas) : [], [agoraRetrato, tarefas]);
+  const nAgentes = contarEquipe(agentes?.membros);
   const alertas = entidades.filter(x => x.estado !== "ativo" && x.estado !== "aguardando-mercado").length;
 
   const diSeguro = Math.min(di, dias.length - 1);
@@ -171,12 +189,15 @@ export function App() {
             kind="tabs"
             variant="underline"
             value={aba}
-            onChange={a => { setAba(a); if (a !== "pregao") setTocando(false); }}
+            onChange={a => { setAba(a); setFoco(null); if (a !== "pregao") setTocando(false); }}
             aria-label="Telas"
             options={[
-              { value: "pregao", label: "Pregão", controls: "tela" },
+              { value: "visao", label: "Visão geral", controls: "tela" },
+              { value: "pregao", label: "Escritório", controls: "tela" },
               { value: "robos", label: "Robôs", badge: alertas ? `${alertas} ${alertas === 1 ? "alerta" : "alertas"}` : undefined, controls: "tela" },
-              { value: "fabrica", label: "Fábrica", controls: "tela" },
+              { value: "passado", label: "Testes no passado", controls: "tela" },
+              { value: "fabrica", label: "Equipe e tarefas", controls: "tela" },
+              { value: "gastos", label: "Gastos de IA", controls: "tela" },
               { value: "contas", label: "Contas", controls: "tela" },
               { value: "diario", label: "Diário", count: contarDiario(dias, diSeguro) || undefined, controls: "tela" },
               { value: "ajustes", label: "Ajustes", controls: "tela", badge: info.estado === "sem-endereco" ? "ligar" : undefined },
@@ -187,6 +208,20 @@ export function App() {
       <FaixaAtualizacao estado={atualizacao} />
 
       <main id="tela" role="tabpanel" className={"tela" + (aba === "pregao" ? " tela-larga" : "")}>
+        {(aba === "pregao" || aba === "robos" || aba === "contas" || aba === "diario") && (
+          <p className="faixa-sim faixa-sim-curta" role="note"><b>100% simulação — nenhum investimento real.</b> Todo ganho e perda desta tela é dinheiro de mentira.</p>
+        )}
+        {aba === "visao" && (
+          <VisaoGeral
+            lista={entidades} tarefas={tarefas} fabrica={fab} custos={custos}
+            conexao={info.estado === "ok" ? { ok: true } : info.estado === "erro" ? { ok: false, msg: info.msg, desde: ultimaOk } : { ok: false, msg: info.estado === "sem-endereco" ? "falta colar a chave de leitura em Ajustes" : info.estado === "sem-programa" ? "prévia no navegador, sem o programa" : "lendo pela primeira vez", desde: null }}
+            lidoEm={info.estado === "ok" ? info.lidoEm : ultimaOk} enviadoEm={vivo?.status?.gerado_em || null}
+            agentes={nAgentes} mudou={mudou} ultimaVisita={anterior.current?.em || null} periodo={periodo} agora={agora}
+            abrir={id => { setFoco(id); setAba("robos"); }} ir={a => setAba(a)}
+          />
+        )}
+        {aba === "passado" && <Passado />}
+        {aba === "gastos" && <Gastos c={custos} />}
         {aba === "pregao" && (
           <Pregao
             fonte={fonte} di={diSeguro} setDi={i => { setTocando(false); setDi(i); }}
@@ -196,8 +231,8 @@ export function App() {
             pront={pront} agentes={agentes} res={res} periodo={periodo} setPeriodo={mudaPeriodo} agora={agora}
           />
         )}
-        {aba === "robos" && <Robos lista={entidades} aoVivo={base === "aovivo"} avisoLote={lote ? (lote.aviso_geral || "Os robôs do lote são observação.") : null} pront={pront} periodo={periodo} />}
-        {aba === "fabrica" && <Fabrica f={quadro} />}
+        {aba === "robos" && <Robos lista={entidades} aoVivo={base === "aovivo"} avisoLote={lote ? (lote.aviso_geral || "Os robôs do lote são observação.") : null} pront={pront} periodo={periodo} abrirId={foco} />}
+        {aba === "fabrica" && <Fabrica f={quadro} tarefas={tarefas} />}
         {aba === "contas" && <Contas dias={dias} di={diSeguro} pararTeste={pararTeste} base={base} ex={ex} viz={viz} entidades={entidades} />}
         {aba === "diario" && <Diario dias={dias} di={diSeguro} />}
         {aba === "ajustes" && <Ajustes info={info} onSalvo={lerVivo} atualizacao={atualizacao} />}

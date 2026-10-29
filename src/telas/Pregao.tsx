@@ -252,6 +252,7 @@ function Situacao({ lista, conta, ver, pront }: { lista: Entidade[]; conta: Cont
 function Legenda() {
   return (
     <ul className="legenda">
+      <li className="legenda-chave"><b>No lazer = sem posição ou sem tarefa neste momento. Não significa necessariamente desligado.</b> Quem tem problema ou não manda informação nunca vai para o lazer.</li>
       <li><b>Sentado na mesa</b> robô comprado (tem moeda ou ação), mesmo parado esperando. Em cima: ganho ou perda do período escolhido (DIA ou ACUM), em verde, vermelho ou neutro, com moeda; embaixo, o que está comprado.</li>
       <li><b>Área de lazer</b> (sinuca e café, na frente) quem está sem posição, inclusive esperando sinal; a cadeira dele fica vazia na mesa. Acima da cabeça, o motivo concreto ("sem sinal · abaixo do teto", "compra recusada · FOMC", "capital novo · compra 19:50") e a hora da próxima rodada, em Brasília.</li>
       <li><b>Em pé no lugar, com ⚠</b> falha, pausa, parado ou sem dado: nunca vai para o lazer. Apagado: parado, sem conexão ou sem telemetria.</li>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { hora, dBR } from "../dados/formato";
 import { filaPorPessoa, porEtapa, rotuloTrilha, type Candidato, type Fabrica as F } from "../dados/fabrica";
+import { colunasTarefas, doSebastian, NOME_MEMBRO, type Tarefa } from "../dados/visao";
 
 // Área da fábrica: quem pesquisa, revisa, congela e testa estratégias, e onde cada candidato está. Só olha.
 // Os papéis vêm do catálogo da equipe (daytrade-lab, equipe/catalogo); o andamento de verdade é a esteira abaixo.
@@ -11,7 +12,7 @@ const EQUIPE: { nome: string; cor: string; faz: string; quando: string }[] = [
   { nome: "Claude", cor: "#7fb8ff", faz: "aciona o executor, roda o teste histórico e leva os arquivos ao repositório", quando: "um candidato por vez" },
 ];
 
-export function Fabrica({ f }: { f: F }) {
+export function Fabrica({ f, tarefas }: { f: F; tarefas?: { em: string | null; lista: Tarefa[] } | null }) {
   const [verParados, setVerParados] = useState(true);
   const fila = filaPorPessoa(f);
   const { colunas, outras } = porEtapa(f);
@@ -19,6 +20,8 @@ export function Fabrica({ f }: { f: F }) {
   const andando = f.candidatos.filter(c => !c.parado).length;
   return (
     <div className="fabrica">
+      <Tarefas t={tarefas || null} />
+      <h2 className="fabrica-tit">Fábrica de estratégias</h2>
       <p className="nota">
         {f.origem === "fabrica"
           ? <>Quadro da fábrica de estratégias, atualizado {hora(f.em)}.</>
@@ -60,7 +63,7 @@ export function Fabrica({ f }: { f: F }) {
           </div>
         )}
       </section>
-      <p className="nota">A fábrica só propõe e testa, sem pedir "sim" a cada etapa (delegação de 27/10/2026), dentro dos US$ 200 do mês para IA/API (referência de US$ 15 por candidato). Desde 29/10 também testa ideias nossas e adaptações (trilha 2): a regra é lacrada antes de qualquer número e julgada só com dias depois do lacre. Continua precisando do "sim" do Sebastian, com data e registro: um robô novo e permanente na simulação (nível 3 do catálogo), qualquer gasto novo e qualquer mudança de risco, lacre ou limite. Nenhuma IA decide ordens.</p>
+      <p className="nota">A fábrica só propõe e testa, sem pedir "sim" a cada etapa (delegação de 27/10/2026), dentro dos US$ 200 do mês para IA/API, sem teto fixo por candidato (a referência de US$ 15 só gera aviso). Desde 29/10 também testa ideias nossas e adaptações (trilha 2): a regra é lacrada antes de qualquer número e julgada só com dias depois do lacre. Continua precisando do "sim" do Sebastian, com data e registro: um robô novo e permanente na simulação (nível 3 do catálogo), qualquer gasto novo e qualquer mudança de risco, lacre ou limite. Nenhuma IA decide ordens.</p>
     </div>
   );
 }
@@ -75,5 +78,45 @@ function CartaoCandidato({ c }: { c: Candidato }) {
       {c.responsavel && !c.parado && <span className="muted pequeno">com {c.responsavel}</span>}
       {c.evidencia && <code title="Arquivo que comprova esta etapa, no repositório daytrade-lab">{c.evidencia}</code>}
     </article>
+  );
+}
+
+// Tarefas da equipe (§8.8): em execução, próximas, aguardando condição, concluídas e incidentes. Quem precisa agir
+// vem do registro: só aparece "você" quando quem resolve é o Sebastian; o resto é de um agente.
+const nome = (id: string) => NOME_MEMBRO[id.split("@")[0].toLowerCase()] || id;
+function Tarefas({ t }: { t: { em: string | null; lista: Tarefa[] } | null }) {
+  const [todas, setTodas] = useState(false);
+  if (!t) return <p className="nota">O registro de tarefas da equipe não chegou na última leitura: não dá para dizer quem está fazendo o quê.</p>;
+  const c = colunasTarefas(t.lista);
+  const colunas: [string, string, Tarefa[]][] = [
+    ["Em execução", "trabalho acontecendo agora", c.execucao],
+    ["Próximas", "na fila, ainda não começaram", c.proximas],
+    ["Aguardando condição", "paradas até algo acontecer", c.aguardando],
+    ["Incidentes", "falhou ou está sem sinal", c.incidentes],
+    ["Concluídas", "entregues", todas ? c.concluidas : c.concluidas.slice(0, 5)],
+  ];
+  return (
+    <section className="tarefas" aria-label="Tarefas da equipe">
+      <h2>Equipe e tarefas</h2>
+      <p className="nota">Registro de tarefas da equipe{t.em ? `, lido ${hora(t.em)}` : ""}. Cada tarefa diz quem é o responsável e, quando está parada, quem precisa agir.</p>
+      <div className="tarefas-colunas">
+        {colunas.map(([tit, sub, l]) => (
+          <div key={tit} className="tarefas-col">
+            <header><b>{tit}</b> <span className="muted">{tit === "Concluídas" ? c.concluidas.length : l.length}</span><br /><span className="muted pequeno">{sub}</span></header>
+            {l.map(x => (
+              <article key={tit + x.id} className={"tarefa" + (doSebastian(x) ? " tarefa-sua" : "")}>
+                <b>{x.titulo}</b>
+                <span className="muted pequeno">{nome(x.responsavel)} · {x.situacao}</span>
+                {x.condicao && <span className="pequeno">Espera: {x.condicao}</span>}
+                {x.estado === "aguardando" && <span className={"pequeno " + (doSebastian(x) ? "aviso" : "muted")}>Quem precisa agir: {doSebastian(x) ? "você (Sebastian)" : nome(x.quemResolve || x.responsavel)}</span>}
+                <span className="muted pequeno tarefa-id">{x.id}</span>
+              </article>
+            ))}
+            {!l.length && <p className="etapa-vazia">nenhuma</p>}
+            {tit === "Concluídas" && c.concluidas.length > 5 && <button type="button" className="link pequeno" onClick={() => setTodas(v => !v)}>{todas ? "mostrar só as 5 últimas" : `mostrar todas (${c.concluidas.length})`}</button>}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
